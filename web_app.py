@@ -23,7 +23,7 @@ generation_status = {}
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
-def generate_anime_async(task_id, novel_path, max_scenes, api_key, provider='qiniu'):
+def generate_anime_async(task_id, novel_path, max_scenes, api_key, provider='qiniu', custom_prompt=None):
     try:
         generation_status[task_id] = {
             'status': 'processing',
@@ -31,7 +31,7 @@ def generate_anime_async(task_id, novel_path, max_scenes, api_key, provider='qin
             'message': '正在解析小说...'
         }
         
-        generator = AnimeGenerator(openai_api_key=api_key, provider=provider)
+        generator = AnimeGenerator(openai_api_key=api_key, provider=provider, custom_prompt=custom_prompt)
         metadata = generator.generate_from_novel(novel_path, max_scenes=max_scenes)
         
         generation_status[task_id] = {
@@ -73,6 +73,7 @@ def upload_novel():
         max_scenes = request.form.get('max_scenes', type=int)
         api_key = request.form.get('api_key', '')
         provider = request.form.get('api_provider', 'qiniu')
+        custom_prompt = request.form.get('custom_prompt', '')
         
         if not api_key:
             api_key = os.getenv('OPENAI_API_KEY')
@@ -82,7 +83,7 @@ def upload_novel():
         
         thread = threading.Thread(
             target=generate_anime_async,
-            args=(task_id, file_path, max_scenes, api_key, provider)
+            args=(task_id, file_path, max_scenes, api_key, provider, custom_prompt)
         )
         thread.start()
         

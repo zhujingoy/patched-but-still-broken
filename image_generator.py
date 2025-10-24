@@ -9,8 +9,9 @@ import base64
 
 
 class ImageGenerator:
-    def __init__(self, api_key: str, provider: str = "qiniu"):
+    def __init__(self, api_key: str, provider: str = "qiniu", custom_prompt: str = None):
         self.provider = provider
+        self.custom_prompt = custom_prompt
         
         if provider == "qiniu":
             self.client = OpenAI(
@@ -32,7 +33,10 @@ class ImageGenerator:
         if os.path.exists(cache_path):
             return cache_path
         
-        full_prompt = f"{style} style, {character_prompt}, high quality, detailed, consistent character design"
+        if self.custom_prompt:
+            full_prompt = f"{self.custom_prompt}, {character_prompt}"
+        else:
+            full_prompt = f"{style} style, {character_prompt}, high quality, detailed, consistent character design"
         
         try:
             if self.provider == "qiniu":
@@ -76,11 +80,16 @@ class ImageGenerator:
         if os.path.exists(cache_path):
             return cache_path
         
-        full_prompt = f"{style} style scene: {scene_description}, high quality, detailed background"
-        
-        if characters:
-            char_desc = ", ".join(characters)
-            full_prompt += f", featuring characters: {char_desc}"
+        if self.custom_prompt:
+            full_prompt = f"{self.custom_prompt}, scene: {scene_description}"
+            if characters:
+                char_desc = ", ".join(characters)
+                full_prompt += f", featuring characters: {char_desc}"
+        else:
+            full_prompt = f"{style} style scene: {scene_description}, high quality, detailed background"
+            if characters:
+                char_desc = ", ".join(characters)
+                full_prompt += f", featuring characters: {char_desc}"
         
         try:
             if self.provider == "qiniu":
