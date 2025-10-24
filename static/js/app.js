@@ -45,6 +45,7 @@ async function handleStartGenerate() {
     const apiKey = localStorage.getItem('api_key');
     const apiProvider = localStorage.getItem('api_provider') || 'qiniu';
     const maxScenes = document.getElementById('max-scenes').value;
+    const customPrompt = document.getElementById('custom-prompt').value;
 
     if (!fileInput.files[0]) {
         alert('请先选择小说文件');
@@ -63,6 +64,9 @@ async function handleStartGenerate() {
     formData.append('api_provider', apiProvider);
     if (maxScenes) {
         formData.append('max_scenes', maxScenes);
+    }
+    if (customPrompt) {
+        formData.append('custom_prompt', customPrompt);
     }
 
     document.getElementById('upload-section').classList.add('hidden');
