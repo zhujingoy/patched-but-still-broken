@@ -44,7 +44,13 @@
 - [百度语音合成](https://ai.baidu.com/tech/speech/tts)
 
 #### 2. 配置 API Keys
-在页面的"API 配置"区域输入您的 API Keys。
+1. 点击主页面右上角的"⚙️ 设置"按钮
+2. 在设置页面输入您的 API Keys
+3. 选择对应的 API 提供商
+4. 点击"保存设置"按钮
+5. 返回主页面开始使用
+
+**注意**：所有 API Keys 仅保存在浏览器本地存储中，不会上传到任何服务器。
 
 #### 3. 使用完整功能
 配置完成后，系统将：
@@ -85,7 +91,8 @@
 
 ### 文件结构
 ```
-novel-anime.html    # 完整的单页面应用（包含 HTML、CSS、JS）
+novel-anime.html    # 主页面（小说输入和动漫播放）
+settings.html       # API 配置页面
 README.md          # 本文档
 ```
 

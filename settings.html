@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API 设置 - 小说动漫化展示系统</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .section {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        .section h2 {
+            color: #667eea;
+            margin-bottom: 15px;
+            font-size: 1.5em;
+        }
+
+        .config-section {
+            background: #fff9e6;
+            border-left: 4px solid #ffc107;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-radius: 8px;
+        }
+
+        .config-section h3 {
+            color: #f57c00;
+            margin-bottom: 10px;
+            font-size: 1.1em;
+        }
+
+        .config-section p {
+            color: #666;
+            line-height: 1.6;
+            margin-bottom: 8px;
+        }
+
+        .config-section code {
+            background: #f5f5f5;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+            color: #d63384;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #333;
+        }
+
+        .form-group .description {
+            font-size: 13px;
+            color: #666;
+            margin-bottom: 8px;
+        }
+
+        .api-input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+
+        .api-input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+
+        button {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: 500;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-secondary {
+            background: #f0f0f0;
+            color: #333;
+        }
+
+        .btn-danger {
+            background: #e74c3c;
+            color: white;
+        }
+
+        .success-message {
+            background: #d4edda;
+            color: #155724;
+            padding: 12px;
+            border-radius: 8px;
+            margin-top: 15px;
+            display: none;
+            border: 1px solid #c3e6cb;
+        }
+
+        .back-link {
+            display: inline-block;
+            color: white;
+            text-decoration: none;
+            margin-bottom: 20px;
+            font-size: 16px;
+            transition: opacity 0.3s;
+        }
+
+        .back-link:hover {
+            opacity: 0.8;
+        }
+
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 1.8em;
+            }
+
+            .section {
+                padding: 15px;
+            }
+
+            .button-group {
+                flex-direction: column;
+            }
+
+            button {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="novel-anime.html" class="back-link">← 返回主页</a>
+        
+        <h1>⚙️ API 设置</h1>
+
+        <div class="section">
+            <h2>🔧 API 配置</h2>
+            
+            <div class="config-section">
+                <h3>⚠️ 使用说明</h3>
+                <p>本系统需要配置以下 API 才能使用完整功能：</p>
+                <p><strong>1. 图片生成 API：</strong>支持 OpenAI DALL-E、Stability AI 等</p>
+                <p><strong>2. 语音合成 API：</strong>支持 OpenAI TTS、Azure TTS、百度 TTS 等</p>
+                <p>演示模式下将使用占位符数据。配置保存后将自动在主页面使用。</p>
+            </div>
+
+            <div class="form-group">
+                <label for="imageApiKey">图片生成 API Key (可选)</label>
+                <div class="description">
+                    支持 OpenAI DALL-E API。配置后可自动生成场景插图。
+                </div>
+                <input type="text" class="api-input" id="imageApiKey" placeholder="sk-...">
+            </div>
+
+            <div class="form-group">
+                <label for="imageApiProvider">图片生成 API 提供商</label>
+                <select class="api-input" id="imageApiProvider">
+                    <option value="openai">OpenAI DALL-E</option>
+                    <option value="stability">Stability AI</option>
+                    <option value="other">其他</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="ttsApiKey">TTS 语音合成 API Key (可选)</label>
+                <div class="description">
+                    支持 OpenAI TTS、Azure TTS 等。配置后可为每个场景生成配音。
+                </div>
+                <input type="text" class="api-input" id="ttsApiKey" placeholder="sk-...">
+            </div>
+
+            <div class="form-group">
+                <label for="ttsApiProvider">TTS API 提供商</label>
+                <select class="api-input" id="ttsApiProvider">
+                    <option value="openai">OpenAI TTS</option>
+                    <option value="azure">Azure TTS</option>
+                    <option value="baidu">百度 TTS</option>
+                    <option value="other">其他</option>
+                </select>
+            </div>
+
+            <div class="button-group">
+                <button class="btn-primary" onclick="saveSettings()">
+                    💾 保存设置
+                </button>
+                <button class="btn-secondary" onclick="loadSettings()">
+                    🔄 重新加载
+                </button>
+                <button class="btn-danger" onclick="clearSettings()">
+                    🗑️ 清除所有设置
+                </button>
+            </div>
+
+            <div class="success-message" id="successMessage">
+                ✅ 设置已保存成功！
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>📚 API 使用指南</h2>
+            
+            <h3 style="color: #667eea; margin-top: 15px; margin-bottom: 10px;">OpenAI DALL-E</h3>
+            <p style="line-height: 1.8; color: #666;">
+                1. 访问 <a href="https://platform.openai.com/" target="_blank" style="color: #667eea;">OpenAI Platform</a><br>
+                2. 登录并进入 API Keys 页面<br>
+                3. 创建新的 API Key<br>
+                4. 将 Key 复制到上方"图片生成 API Key"输入框
+            </p>
+
+            <h3 style="color: #667eea; margin-top: 20px; margin-bottom: 10px;">OpenAI TTS</h3>
+            <p style="line-height: 1.8; color: #666;">
+                1. 使用与 DALL-E 相同的 OpenAI API Key<br>
+                2. 或创建单独的 Key 用于 TTS 服务<br>
+                3. 将 Key 复制到上方"TTS API Key"输入框
+            </p>
+
+            <h3 style="color: #667eea; margin-top: 20px; margin-bottom: 10px;">隐私说明</h3>
+            <p style="line-height: 1.8; color: #666;">
+                所有 API Key 仅保存在您的浏览器本地存储中，不会上传到任何服务器。请妥善保管您的 API Key。
+            </p>
+        </div>
+    </div>
+
+    <script>
+        function saveSettings() {
+            const settings = {
+                imageApiKey: document.getElementById('imageApiKey').value.trim(),
+                imageApiProvider: document.getElementById('imageApiProvider').value,
+                ttsApiKey: document.getElementById('ttsApiKey').value.trim(),
+                ttsApiProvider: document.getElementById('ttsApiProvider').value
+            };
+
+            localStorage.setItem('novelAnimeSettings', JSON.stringify(settings));
+
+            const successMessage = document.getElementById('successMessage');
+            successMessage.style.display = 'block';
+            
+            setTimeout(() => {
+                successMessage.style.display = 'none';
+            }, 3000);
+        }
+
+        function loadSettings() {
+            const settingsJson = localStorage.getItem('novelAnimeSettings');
+            
+            if (settingsJson) {
+                try {
+                    const settings = JSON.parse(settingsJson);
+                    document.getElementById('imageApiKey').value = settings.imageApiKey || '';
+                    document.getElementById('imageApiProvider').value = settings.imageApiProvider || 'openai';
+                    document.getElementById('ttsApiKey').value = settings.ttsApiKey || '';
+                    document.getElementById('ttsApiProvider').value = settings.ttsApiProvider || 'openai';
+                } catch (e) {
+                    console.error('Failed to load settings:', e);
+                }
+            }
+        }
+
+        function clearSettings() {
+            if (confirm('确定要清除所有 API 设置吗？')) {
+                localStorage.removeItem('novelAnimeSettings');
+                document.getElementById('imageApiKey').value = '';
+                document.getElementById('imageApiProvider').value = 'openai';
+                document.getElementById('ttsApiKey').value = '';
+                document.getElementById('ttsApiProvider').value = 'openai';
+                
+                alert('所有设置已清除！');
+            }
+        }
+
+        window.onload = function() {
+            loadSettings();
+        };
+    </script>
+</body>
+</html>

@@ -31,6 +31,34 @@
             text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
         }
 
+        .header-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+
+        .settings-btn {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: 2px solid white;
+            padding: 10px 20px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-size: 16px;
+            font-weight: 500;
+            transition: all 0.3s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .settings-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+
         .section {
             background: white;
             border-radius: 15px;
@@ -295,6 +323,16 @@
         }
 
         @media (max-width: 768px) {
+            .header-container {
+                flex-direction: column;
+                gap: 15px;
+                text-align: center;
+            }
+
+            .settings-btn {
+                width: 100%;
+                justify-content: center;
+            }
             h1 {
                 font-size: 1.8em;
             }
@@ -315,27 +353,9 @@
 </head>
 <body>
     <div class="container">
-        <h1>📚 小说动漫化展示系统</h1>
-
-        <div class="section">
-            <h2>🔧 API 配置</h2>
-            <div class="config-section">
-                <h3>⚠️ 使用说明</h3>
-                <p>本系统需要配置以下 API 才能使用完整功能：</p>
-                <p><strong>1. 图片生成 API：</strong>支持 OpenAI DALL-E、Stability AI 等</p>
-                <p><strong>2. 语音合成 API：</strong>支持 OpenAI TTS、Azure TTS、百度 TTS 等</p>
-                <p>演示模式下将使用占位符数据。</p>
-            </div>
-            
-            <label>
-                <strong>图片生成 API Key (可选):</strong>
-                <input type="text" class="api-input" id="imageApiKey" placeholder="sk-...">
-            </label>
-            
-            <label>
-                <strong>TTS API Key (可选):</strong>
-                <input type="text" class="api-input" id="ttsApiKey" placeholder="sk-...">
-            </label>
+        <div class="header-container">
+            <h1 style="margin-bottom: 0;">📚 小说动漫化展示系统</h1>
+            <a href="settings.html" class="settings-btn">⚙️ 设置</a>
         </div>
 
         <div class="section">
@@ -399,6 +419,19 @@
             document.getElementById('novelText').value = '';
         }
 
+        function loadApiSettings() {
+            const settingsJson = localStorage.getItem('novelAnimeSettings');
+            if (settingsJson) {
+                try {
+                    return JSON.parse(settingsJson);
+                } catch (e) {
+                    console.error('Failed to load settings:', e);
+                    return {};
+                }
+            }
+            return {};
+        }
+
         async function startGeneration() {
             const novelText = document.getElementById('novelText').value.trim();
             
@@ -407,8 +440,9 @@
                 return;
             }
 
-            const imageApiKey = document.getElementById('imageApiKey').value.trim();
-            const ttsApiKey = document.getElementById('ttsApiKey').value.trim();
+            const settings = loadApiSettings();
+            const imageApiKey = settings.imageApiKey || '';
+            const ttsApiKey = settings.ttsApiKey || '';
 
             const progressContainer = document.getElementById('progressContainer');
             const progressFill = document.getElementById('progressFill');
