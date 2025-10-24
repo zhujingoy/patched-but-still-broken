@@ -5,12 +5,13 @@ from character_manager import CharacterManager
 from image_generator import ImageGenerator
 from tts_generator import TTSGenerator
 from scene_composer import SceneComposer
+from video_generator import VideoGenerator
 from typing import List, Dict
 import json
 
 
 class AnimeGenerator:
-    def __init__(self, openai_api_key: str = None, provider: str = "qiniu", custom_prompt: str = None):
+    def __init__(self, openai_api_key: str = None, provider: str = "qiniu", custom_prompt: str = None, enable_video: bool = False):
         load_dotenv()
         
         self.api_key = openai_api_key or os.getenv('OPENAI_API_KEY')
@@ -20,14 +21,20 @@ class AnimeGenerator:
         self.char_mgr = CharacterManager()
         self.image_gen = ImageGenerator(self.api_key, provider=provider, custom_prompt=custom_prompt)
         self.tts_gen = TTSGenerator()
-        self.scene_composer = SceneComposer(self.image_gen, self.tts_gen, self.char_mgr)
+        
+        self.video_gen = None
+        if enable_video:
+            self.video_gen = VideoGenerator(self.api_key)
+        
+        self.scene_composer = SceneComposer(self.image_gen, self.tts_gen, self.char_mgr, self.video_gen)
         
         self.output_dir = "anime_output"
         os.makedirs(self.output_dir, exist_ok=True)
     
     def generate_from_novel(self, novel_path: str, 
                           max_scenes: int = None,
-                          character_descriptions: Dict[str, str] = None) -> Dict:
+                          character_descriptions: Dict[str, str] = None,
+                          generate_video: bool = False) -> Dict:
         with open(novel_path, 'r', encoding='utf-8') as f:
             novel_text = f.read()
         
@@ -65,7 +72,8 @@ class AnimeGenerator:
             
             scenes = self.scene_composer.create_scenes_from_paragraphs(
                 scenes_to_create,
-                start_index=scene_index
+                start_index=scene_index,
+                generate_video=generate_video
             )
             
             all_scenes.extend(scenes)

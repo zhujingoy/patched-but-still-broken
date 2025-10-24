@@ -34,6 +34,13 @@
                     <textarea id="custom-prompt" rows="4" placeholder="例如: anime style, vibrant colors, detailed background...\n留空使用默认提示词" style="width: 100%; padding: 12px; border: 2px solid #ddd; border-radius: 8px; font-size: 1em; font-family: inherit; resize: vertical;"></textarea>
                     <small style="color: #666; margin-top: 5px;">输入自定义提示词来控制 AI 生成的图片风格</small>
                 </div>
+                <div class="setting-item">
+                    <label for="enable-video">
+                        <input type="checkbox" id="enable-video" style="width: auto; margin-right: 8px;">
+                        启用视频生成功能
+                    </label>
+                    <small style="color: #666; margin-top: 5px; display: block;">使用七牛 AI 将小说转换为视频，默认关键词：动漫角色统一，声音与剧情匹配，每帧切换时，角色风格保持连贯，有流畅的过渡动画</small>
+                </div>
             </div>
             
             <button id="start-generate-btn" class="btn btn-success" disabled>开始生成</button>
