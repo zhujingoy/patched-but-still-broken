@@ -58,10 +58,13 @@ async function handleStartGenerate() {
         return;
     }
 
+    const enableVideo = document.getElementById('enable-video').checked;
+    
     const formData = new FormData();
     formData.append('novel', fileInput.files[0]);
     formData.append('api_key', apiKey);
     formData.append('api_provider', apiProvider);
+    formData.append('enable_video', enableVideo ? 'true' : 'false');
     if (maxScenes) {
         formData.append('max_scenes', maxScenes);
     }
@@ -158,7 +161,16 @@ function displayScene(index) {
     const sceneCounter = document.getElementById('scene-counter');
     const sceneCharacters = document.getElementById('scene-characters');
 
-    sceneImage.src = scene.image_url;
+    if (scene.video_url) {
+        sceneImage.outerHTML = `<video id="scene-image" src="${scene.video_url}" controls autoplay loop style="width: 100%; height: auto; border-radius: 10px;"></video>`;
+    } else {
+        if (document.getElementById('scene-image').tagName === 'VIDEO') {
+            const imageWrapper = document.querySelector('.scene-image-wrapper');
+            imageWrapper.innerHTML = '<img id="scene-image" src="" alt="场景图片">';
+        }
+        sceneImage.src = scene.image_url;
+    }
+    
     sceneText.textContent = scene.text;
     sceneCounter.textContent = `场景 ${index + 1} / ${scenes.length}`;
     
