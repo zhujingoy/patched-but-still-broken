@@ -7,6 +7,7 @@ let audioPlayer = null;
 document.addEventListener('DOMContentLoaded', function() {
     audioPlayer = document.getElementById('audio-player');
     initializeEventListeners();
+    restoreFileInfo();
 });
 
 function initializeEventListeners() {
@@ -18,6 +19,7 @@ function initializeEventListeners() {
     const nextBtn = document.getElementById('next-btn');
     const stopBtn = document.getElementById('stop-btn');
     const volumeSlider = document.getElementById('volume-slider');
+    const returnHomeBtn = document.getElementById('return-home-btn');
 
     selectFileBtn.addEventListener('click', () => novelFile.click());
     
@@ -28,16 +30,52 @@ function initializeEventListeners() {
     nextBtn.addEventListener('click', () => navigateScene(1));
     stopBtn.addEventListener('click', stopPlayback);
     volumeSlider.addEventListener('input', handleVolumeChange);
+    if (returnHomeBtn) {
+        returnHomeBtn.addEventListener('click', returnToHome);
+    }
 
     audioPlayer.addEventListener('ended', handleAudioEnded);
+
+    // Mark navigation to settings to preserve file state
+    const settingsLink = document.querySelector('a[href="/settings"]');
+    if (settingsLink) {
+        settingsLink.addEventListener('click', () => {
+            sessionStorage.setItem('navigating_to_settings', 'true');
+        });
+    }
 }
 
 function handleFileSelect(event) {
     const file = event.target.files[0];
     if (file) {
-        document.getElementById('file-info').textContent = `已选择: ${file.name}`;
+        const fileInfo = document.getElementById('file-info');
+        fileInfo.textContent = `已选择: ${file.name}`;
+        fileInfo.style.color = '';
         document.getElementById('start-generate-btn').disabled = false;
+        // Save file name to sessionStorage for navigation to settings
+        sessionStorage.setItem('selected_file_name', file.name);
     }
+}
+
+function restoreFileInfo() {
+    // Only restore if coming back from settings page
+    const fromSettings = sessionStorage.getItem('navigating_to_settings') === 'true';
+    
+    if (fromSettings) {
+        const fileName = sessionStorage.getItem('selected_file_name');
+        if (fileName) {
+            document.getElementById('file-info').textContent = `之前选择: ${fileName} (请重新选择文件)`;
+            document.getElementById('file-info').style.color = '#ff9800';
+        }
+        // Clear the navigation flag
+        sessionStorage.removeItem('navigating_to_settings');
+    } else {
+        // Clear file info if not from settings (page reload or new visit)
+        sessionStorage.removeItem('selected_file_name');
+        document.getElementById('file-info').textContent = '';
+        document.getElementById('start-generate-btn').disabled = true;
+    }
+    // Button stays disabled until user selects a file again
 }
 
 async function handleStartGenerate() {
@@ -250,4 +288,29 @@ function handleVolumeChange(event) {
 function resetUploadSection() {
     document.getElementById('progress-section').classList.add('hidden');
     document.getElementById('upload-section').classList.remove('hidden');
+}
+
+function returnToHome() {
+    if (confirm('确定要返回主页吗?当前播放将被停止。')) {
+        stopPlayback();
+        
+        // Clear file selection
+        const fileInput = document.getElementById('novel-file');
+        fileInput.value = '';
+        document.getElementById('file-info').textContent = '';
+        document.getElementById('start-generate-btn').disabled = true;
+        
+        // Clear session storage
+        sessionStorage.removeItem('selected_file_name');
+        sessionStorage.removeItem('navigating_to_settings');
+        
+        // Reset task and scenes
+        currentTaskId = null;
+        scenes = [];
+        currentSceneIndex = 0;
+        
+        // Show upload section, hide player section
+        document.getElementById('player-section').classList.add('hidden');
+        document.getElementById('upload-section').classList.remove('hidden');
+    }
 }
