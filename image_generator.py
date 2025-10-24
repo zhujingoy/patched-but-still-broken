@@ -132,10 +132,7 @@ class ImageGenerator:
             
             img_width, img_height = img.size
             
-            try:
-                font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 40)
-            except:
-                font = ImageFont.load_default()
+            font = self._load_chinese_font(40)
             
             max_width = img_width - 100
             lines = self._wrap_text(text, font, max_width, draw)
@@ -173,6 +170,27 @@ class ImageGenerator:
         except Exception as e:
             print(f"添加文字叠加失败: {e}")
             return False
+    
+    def _load_chinese_font(self, size: int):
+        chinese_fonts = [
+            "/usr/share/fonts/truetype/wqy/wqy-zenhei.ttc",
+            "/usr/share/fonts/truetype/wqy/wqy-microhei.ttc",
+            "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
+            "/usr/share/fonts/truetype/arphic/uming.ttc",
+            "/System/Library/Fonts/PingFang.ttc",
+            "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+        ]
+        
+        for font_path in chinese_fonts:
+            try:
+                return ImageFont.truetype(font_path, size)
+            except:
+                continue
+        
+        try:
+            return ImageFont.load_default()
+        except:
+            return None
     
     def _wrap_text(self, text: str, font, max_width: int, draw) -> list:
         lines = []
