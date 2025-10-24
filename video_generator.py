@@ -115,9 +115,10 @@ class VideoGenerator:
                 print(f"当前状态: {status}")
                 
                 if status == "Completed":
-                    videos = result.get("videos", [])
+                    data = result.get("data", {})
+                    videos = data.get("videos", [])
                     if videos and len(videos) > 0:
-                        return videos[0].get("uri")
+                        return videos[0].get("url")
                     else:
                         print("未找到生成的视频")
                         return None
