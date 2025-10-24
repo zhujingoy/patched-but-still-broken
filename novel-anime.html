@@ -1,0 +1,667 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>小说动漫化展示系统</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .section {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        .section h2 {
+            color: #667eea;
+            margin-bottom: 15px;
+            font-size: 1.5em;
+        }
+
+        textarea {
+            width: 100%;
+            min-height: 150px;
+            padding: 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            resize: vertical;
+            font-family: inherit;
+        }
+
+        textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+            flex-wrap: wrap;
+        }
+
+        button {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: 500;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-secondary {
+            background: #f0f0f0;
+            color: #333;
+        }
+
+        .btn-danger {
+            background: #e74c3c;
+            color: white;
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .progress-container {
+            display: none;
+            margin-top: 15px;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 30px;
+            background: #f0f0f0;
+            border-radius: 15px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            transition: width 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+        }
+
+        .progress-text {
+            text-align: center;
+            margin-top: 10px;
+            color: #666;
+        }
+
+        .player-container {
+            display: none;
+        }
+
+        .frame-display {
+            background: #f9f9f9;
+            border-radius: 12px;
+            overflow: hidden;
+            margin-bottom: 20px;
+        }
+
+        .frame-image {
+            width: 100%;
+            height: 400px;
+            object-fit: cover;
+            background: linear-gradient(135deg, #e0e0e0 0%, #f0f0f0 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #999;
+            font-size: 18px;
+        }
+
+        .frame-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .frame-text {
+            padding: 20px;
+            font-size: 16px;
+            line-height: 1.8;
+            color: #333;
+            background: white;
+        }
+
+        .controls {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .frame-counter {
+            font-size: 18px;
+            color: #667eea;
+            font-weight: bold;
+        }
+
+        .volume-control {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .volume-control input[type="range"] {
+            width: 150px;
+        }
+
+        input[type="range"] {
+            -webkit-appearance: none;
+            appearance: none;
+            height: 6px;
+            border-radius: 3px;
+            background: #e0e0e0;
+            outline: none;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #667eea;
+            cursor: pointer;
+        }
+
+        input[type="range"]::-moz-range-thumb {
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #667eea;
+            cursor: pointer;
+            border: none;
+        }
+
+        .config-section {
+            background: #fff9e6;
+            border-left: 4px solid #ffc107;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-radius: 8px;
+        }
+
+        .config-section h3 {
+            color: #f57c00;
+            margin-bottom: 10px;
+            font-size: 1.1em;
+        }
+
+        .config-section p {
+            color: #666;
+            line-height: 1.6;
+            margin-bottom: 8px;
+        }
+
+        .config-section code {
+            background: #f5f5f5;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+            color: #d63384;
+        }
+
+        .frame-card {
+            animation: fadeIn 0.5s ease-in;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .loading-spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255,255,255,.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .api-input {
+            width: 100%;
+            padding: 10px;
+            margin: 8px 0;
+            border: 2px solid #e0e0e0;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+
+        .api-input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 1.8em;
+            }
+
+            .section {
+                padding: 15px;
+            }
+
+            .frame-image {
+                height: 300px;
+            }
+
+            .controls {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📚 小说动漫化展示系统</h1>
+
+        <div class="section">
+            <h2>🔧 API 配置</h2>
+            <div class="config-section">
+                <h3>⚠️ 使用说明</h3>
+                <p>本系统需要配置以下 API 才能使用完整功能：</p>
+                <p><strong>1. 图片生成 API：</strong>支持 OpenAI DALL-E、Stability AI 等</p>
+                <p><strong>2. 语音合成 API：</strong>支持 OpenAI TTS、Azure TTS、百度 TTS 等</p>
+                <p>演示模式下将使用占位符数据。</p>
+            </div>
+            
+            <label>
+                <strong>图片生成 API Key (可选):</strong>
+                <input type="text" class="api-input" id="imageApiKey" placeholder="sk-...">
+            </label>
+            
+            <label>
+                <strong>TTS API Key (可选):</strong>
+                <input type="text" class="api-input" id="ttsApiKey" placeholder="sk-...">
+            </label>
+        </div>
+
+        <div class="section">
+            <h2>📝 上传小说文本</h2>
+            <textarea id="novelText" placeholder="请输入或粘贴小说文本内容...&#x0a;&#x0a;示例：&#x0a;夜幕降临，城市的霓虹灯开始闪烁。李明站在高楼的天台上，眺望着远方的天际线。&#x0a;&#x0a;'这就是我梦想开始的地方。'他喃喃自语道。&#x0a;&#x0a;突然，一阵刺耳的警报声打破了宁静。李明转身，看到远处升起一股浓烟..."></textarea>
+            <div class="button-group">
+                <button class="btn-primary" onclick="startGeneration()">
+                    🎬 开始生成动漫
+                </button>
+                <button class="btn-secondary" onclick="clearNovel()">
+                    🗑️ 清空文本
+                </button>
+            </div>
+
+            <div class="progress-container" id="progressContainer">
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progressFill">0%</div>
+                </div>
+                <div class="progress-text" id="progressText">准备中...</div>
+            </div>
+        </div>
+
+        <div class="section player-container" id="playerContainer">
+            <h2>🎥 动漫播放区</h2>
+            
+            <div class="frame-display" id="frameDisplay">
+                <div class="frame-image" id="frameImage">
+                    <span>等待加载...</span>
+                </div>
+                <div class="frame-text" id="frameText">
+                    暂无内容
+                </div>
+            </div>
+
+            <div class="controls">
+                <button class="btn-secondary" onclick="previousFrame()">⏮️ 上一帧</button>
+                <button class="btn-primary" id="playBtn" onclick="togglePlay()">▶️ 播放</button>
+                <button class="btn-secondary" onclick="nextFrame()">⏭️ 下一帧</button>
+                <button class="btn-danger" onclick="stopPlayback()">⏹️ 停止</button>
+                
+                <div class="frame-counter" id="frameCounter">1 / 1</div>
+                
+                <div class="volume-control">
+                    <span>🔊</span>
+                    <input type="range" id="volumeSlider" min="0" max="100" value="80" onchange="updateVolume()">
+                    <span id="volumeText">80%</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let frames = [];
+        let currentFrameIndex = 0;
+        let isPlaying = false;
+        let playInterval = null;
+        let currentAudio = null;
+        let volume = 0.8;
+
+        function clearNovel() {
+            document.getElementById('novelText').value = '';
+        }
+
+        async function startGeneration() {
+            const novelText = document.getElementById('novelText').value.trim();
+            
+            if (!novelText) {
+                alert('请先输入小说文本！');
+                return;
+            }
+
+            const imageApiKey = document.getElementById('imageApiKey').value.trim();
+            const ttsApiKey = document.getElementById('ttsApiKey').value.trim();
+
+            const progressContainer = document.getElementById('progressContainer');
+            const progressFill = document.getElementById('progressFill');
+            const progressText = document.getElementById('progressText');
+            
+            progressContainer.style.display = 'block';
+            progressFill.style.width = '0%';
+            progressFill.textContent = '0%';
+
+            const scenes = segmentNovel(novelText);
+            frames = [];
+
+            for (let i = 0; i < scenes.length; i++) {
+                const progress = Math.round(((i + 1) / scenes.length) * 100);
+                progressFill.style.width = progress + '%';
+                progressFill.textContent = progress + '%';
+                progressText.textContent = `正在生成第 ${i + 1} / ${scenes.length} 帧...`;
+
+                const frame = await generateFrame(scenes[i], i, imageApiKey, ttsApiKey);
+                frames.push(frame);
+
+                await new Promise(resolve => setTimeout(resolve, 500));
+            }
+
+            progressText.textContent = '生成完成！';
+            
+            setTimeout(() => {
+                progressContainer.style.display = 'none';
+                document.getElementById('playerContainer').style.display = 'block';
+                currentFrameIndex = 0;
+                displayFrame(0);
+            }, 1000);
+        }
+
+        function segmentNovel(text) {
+            const paragraphs = text.split(/\n\n+/).filter(p => p.trim());
+            
+            const scenes = [];
+            let currentScene = '';
+            
+            for (const para of paragraphs) {
+                currentScene += para + '\n\n';
+                
+                if (currentScene.length > 100 || para.includes('。') || para.includes('！') || para.includes('？')) {
+                    if (currentScene.trim()) {
+                        scenes.push(currentScene.trim());
+                        currentScene = '';
+                    }
+                }
+            }
+            
+            if (currentScene.trim()) {
+                scenes.push(currentScene.trim());
+            }
+            
+            return scenes.length > 0 ? scenes : [text];
+        }
+
+        async function generateFrame(sceneText, index, imageApiKey, ttsApiKey) {
+            const frame = {
+                text: sceneText,
+                image: null,
+                audio: null
+            };
+
+            if (imageApiKey) {
+                frame.image = await generateImage(sceneText, imageApiKey);
+            } else {
+                frame.image = generatePlaceholderImage(index);
+            }
+
+            if (ttsApiKey) {
+                frame.audio = await generateTTS(sceneText, ttsApiKey);
+            }
+
+            return frame;
+        }
+
+        async function generateImage(prompt, apiKey) {
+            return new Promise((resolve) => {
+                setTimeout(() => {
+                    resolve(null);
+                }, 100);
+            });
+        }
+
+        function generatePlaceholderImage(index) {
+            const colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A', '#98D8C8', '#F7DC6F'];
+            const color = colors[index % colors.length];
+            
+            const canvas = document.createElement('canvas');
+            canvas.width = 800;
+            canvas.height = 600;
+            const ctx = canvas.getContext('2d');
+            
+            const gradient = ctx.createLinearGradient(0, 0, 800, 600);
+            gradient.addColorStop(0, color);
+            gradient.addColorStop(1, adjustColor(color, -30));
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, 800, 600);
+            
+            ctx.fillStyle = 'white';
+            ctx.font = 'bold 48px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(`场景 ${index + 1}`, 400, 250);
+            
+            ctx.font = '24px Arial';
+            ctx.fillText('🎨 动漫风格插图', 400, 320);
+            ctx.fillText('(配置 API Key 后自动生成)', 400, 360);
+            
+            return canvas.toDataURL();
+        }
+
+        function adjustColor(color, amount) {
+            const num = parseInt(color.replace('#', ''), 16);
+            const r = Math.max(0, Math.min(255, (num >> 16) + amount));
+            const g = Math.max(0, Math.min(255, ((num >> 8) & 0x00FF) + amount));
+            const b = Math.max(0, Math.min(255, (num & 0x0000FF) + amount));
+            return '#' + ((r << 16) | (g << 8) | b).toString(16).padStart(6, '0');
+        }
+
+        async function generateTTS(text, apiKey) {
+            return null;
+        }
+
+        function displayFrame(index) {
+            if (index < 0 || index >= frames.length) return;
+
+            currentFrameIndex = index;
+            const frame = frames[index];
+
+            const frameImage = document.getElementById('frameImage');
+            const frameText = document.getElementById('frameText');
+            const frameCounter = document.getElementById('frameCounter');
+
+            if (frame.image) {
+                frameImage.innerHTML = `<img src="${frame.image}" alt="场景 ${index + 1}">`;
+            } else {
+                frameImage.innerHTML = '<span>图片生成中...</span>';
+            }
+
+            frameText.textContent = frame.text;
+            frameCounter.textContent = `${index + 1} / ${frames.length}`;
+
+            if (frame.audio && isPlaying) {
+                playAudio(frame.audio);
+            }
+        }
+
+        function previousFrame() {
+            if (currentFrameIndex > 0) {
+                stopAudio();
+                displayFrame(currentFrameIndex - 1);
+            }
+        }
+
+        function nextFrame() {
+            if (currentFrameIndex < frames.length - 1) {
+                stopAudio();
+                displayFrame(currentFrameIndex + 1);
+            }
+        }
+
+        function togglePlay() {
+            isPlaying = !isPlaying;
+            const playBtn = document.getElementById('playBtn');
+
+            if (isPlaying) {
+                playBtn.textContent = '⏸️ 暂停';
+                playBtn.classList.remove('btn-primary');
+                playBtn.classList.add('btn-secondary');
+                startAutoPlay();
+            } else {
+                playBtn.textContent = '▶️ 播放';
+                playBtn.classList.remove('btn-secondary');
+                playBtn.classList.add('btn-primary');
+                stopAutoPlay();
+            }
+        }
+
+        function startAutoPlay() {
+            const frame = frames[currentFrameIndex];
+            
+            if (frame.audio) {
+                playAudio(frame.audio);
+            } else {
+                const estimatedDuration = Math.max(3000, frame.text.length * 100);
+                playInterval = setTimeout(() => {
+                    if (currentFrameIndex < frames.length - 1) {
+                        nextFrame();
+                        if (isPlaying) {
+                            startAutoPlay();
+                        }
+                    } else {
+                        stopPlayback();
+                    }
+                }, estimatedDuration);
+            }
+        }
+
+        function stopAutoPlay() {
+            if (playInterval) {
+                clearTimeout(playInterval);
+                playInterval = null;
+            }
+            stopAudio();
+        }
+
+        function stopPlayback() {
+            isPlaying = false;
+            const playBtn = document.getElementById('playBtn');
+            playBtn.textContent = '▶️ 播放';
+            playBtn.classList.remove('btn-secondary');
+            playBtn.classList.add('btn-primary');
+            stopAutoPlay();
+            currentFrameIndex = 0;
+            displayFrame(0);
+        }
+
+        function playAudio(audioUrl) {
+            stopAudio();
+            currentAudio = new Audio(audioUrl);
+            currentAudio.volume = volume;
+            currentAudio.play();
+            
+            currentAudio.onended = () => {
+                if (isPlaying && currentFrameIndex < frames.length - 1) {
+                    nextFrame();
+                    startAutoPlay();
+                } else if (currentFrameIndex >= frames.length - 1) {
+                    stopPlayback();
+                }
+            };
+        }
+
+        function stopAudio() {
+            if (currentAudio) {
+                currentAudio.pause();
+                currentAudio = null;
+            }
+        }
+
+        function updateVolume() {
+            const slider = document.getElementById('volumeSlider');
+            const volumeText = document.getElementById('volumeText');
+            volume = slider.value / 100;
+            volumeText.textContent = slider.value + '%';
+            
+            if (currentAudio) {
+                currentAudio.volume = volume;
+            }
+        }
+    </script>
+</body>
+</html>
