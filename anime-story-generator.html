@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="zh" class="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>小说动漫化系统 - Novel to Anime Generator</title>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .dark {
+            --bg-primary: #1a1a2e;
+            --bg-secondary: #16213e;
+            --text-primary: #e8e8e8;
+            --text-secondary: #a0a0a0;
+            --accent: #4a90e2;
+        }
+        .light {
+            --bg-primary: #f8f9fa;
+            --bg-secondary: #ffffff;
+            --text-primary: #2c3e50;
+            --text-secondary: #7f8c8d;
+            --accent: #3498db;
+        }
+        body {
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            transition: all 0.3s ease;
+        }
+        .scene-card {
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        .scene-card:hover {
+            transform: translateY(-5px);
+        }
+        .fade-in {
+            animation: fadeIn 0.5s ease-in;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .progress-bar {
+            height: 4px;
+            background: linear-gradient(90deg, #4a90e2, #e74c3c);
+            transition: width 0.3s ease;
+        }
+        .spinner {
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top: 3px solid var(--accent);
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+
+        function AnimeStoryGenerator() {
+            const [theme, setTheme] = useState('light');
+            const [novelText, setNovelText] = useState('');
+            const [scenes, setScenes] = useState([]);
+            const [isGenerating, setIsGenerating] = useState(false);
+            const [currentScene, setCurrentScene] = useState(0);
+            const [isPlaying, setIsPlaying] = useState(false);
+            const [progress, setProgress] = useState(0);
+            const speechRef = useRef(null);
+
+            useEffect(() => {
+                document.documentElement.className = theme;
+            }, [theme]);
+
+            const toggleTheme = () => {
+                setTheme(theme === 'light' ? 'dark' : 'light');
+            };
+
+            const parseNovelToScenes = (text) => {
+                const paragraphs = text.split(/\n\n+/).filter(p => p.trim());
+                const scenes = [];
+                
+                const characters = extractCharacters(text);
+                const characterStyle = generateCharacterStyle(characters);
+
+                paragraphs.forEach((para, index) => {
+                    if (para.trim().length < 20) return;
+                    
+                    const sentences = para.split(/[。！？]/).filter(s => s.trim());
+                    const summary = sentences[0]?.substring(0, 100) || para.substring(0, 100);
+                    
+                    const sceneCharacters = characters.filter(char => 
+                        para.includes(char)
+                    );
+
+                    scenes.push({
+                        scene_id: index + 1,
+                        title: `第 ${index + 1} 幕`,
+                        summary: summary,
+                        text: para.substring(0, 200),
+                        characters: sceneCharacters,
+                        characterStyle: characterStyle,
+                        imagePrompt: generateImagePrompt(summary, sceneCharacters, characterStyle),
+                        dialogue: extractDialogue(para)
+                    });
+                });
+
+                return scenes;
+            };
+
+            const extractCharacters = (text) => {
+                const namePattern = /([A-Z][a-z]+|[\u4e00-\u9fa5]{2,4})/g;
+                const matches = text.match(namePattern) || [];
+                const frequency = {};
+                matches.forEach(name => {
+                    frequency[name] = (frequency[name] || 0) + 1;
+                });
+                
+                return Object.entries(frequency)
+                    .filter(([_, count]) => count > 2)
+                    .sort((a, b) => b[1] - a[1])
+                    .slice(0, 5)
+                    .map(([name]) => name);
+            };
+
+            const generateCharacterStyle = (characters) => {
+                const styles = {
+                    baseStyle: "anime style, high quality, detailed, consistent character design",
+                    characterDetails: {}
+                };
+
+                characters.forEach((char, idx) => {
+                    const hairColors = ['black', 'brown', 'blonde', 'silver', 'blue'];
+                    const outfits = ['school uniform', 'casual wear', 'formal attire', 'traditional clothing'];
+                    
+                    styles.characterDetails[char] = {
+                        hair: hairColors[idx % hairColors.length],
+                        outfit: outfits[idx % outfits.length],
+                        trait: ['gentle smile', 'serious expression', 'cheerful demeanor', 'mysterious aura'][idx % 4]
+                    };
+                });
+
+                return styles;
+            };
+
+            const generateImagePrompt = (summary, characters, style) => {
+                const charDetails = characters.map(char => {
+                    const detail = style.characterDetails[char];
+                    return detail ? `${char} with ${detail.hair} hair, ${detail.outfit}, ${detail.trait}` : char;
+                }).join(', ');
+
+                return `${summary}, featuring ${charDetails}, ${style.baseStyle}`;
+            };
+
+            const extractDialogue = (text) => {
+                const dialoguePattern = /["「『]([^"」』]+)["」』]/g;
+                const matches = [];
+                let match;
+                while ((match = dialoguePattern.exec(text)) !== null) {
+                    matches.push(match[1]);
+                }
+                return matches;
+            };
+
+            const generateMockImage = (scene) => {
+                const colors = [
+                    'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                    'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
+                    'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
+                    'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)',
+                    'linear-gradient(135deg, #fa709a 0%, #fee140 100%)',
+                    'linear-gradient(135deg, #30cfd0 0%, #330867 100%)'
+                ];
+                
+                return {
+                    background: colors[scene.scene_id % colors.length],
+                    emoji: ['🌸', '⚔️', '🌙', '🔥', '💫', '🌊'][scene.scene_id % 6]
+                };
+            };
+
+            const handleGenerate = async () => {
+                if (!novelText.trim()) {
+                    alert('请输入小说文本！');
+                    return;
+                }
+
+                setIsGenerating(true);
+                setProgress(0);
+
+                await new Promise(resolve => setTimeout(resolve, 500));
+                setProgress(20);
+
+                const parsedScenes = parseNovelToScenes(novelText);
+                setProgress(50);
+
+                await new Promise(resolve => setTimeout(resolve, 800));
+                
+                const scenesWithImages = parsedScenes.map(scene => ({
+                    ...scene,
+                    image: generateMockImage(scene)
+                }));
+
+                setProgress(100);
+                setScenes(scenesWithImages);
+                setIsGenerating(false);
+                setCurrentScene(0);
+            };
+
+            const speakText = (text, onEnd) => {
+                if ('speechSynthesis' in window) {
+                    window.speechSynthesis.cancel();
+                    
+                    const utterance = new SpeechSynthesisUtterance(text);
+                    utterance.lang = 'zh-CN';
+                    utterance.rate = 0.9;
+                    utterance.pitch = 1.1;
+                    
+                    utterance.onend = () => {
+                        if (onEnd) onEnd();
+                    };
+
+                    window.speechSynthesis.speak(utterance);
+                    speechRef.current = utterance;
+                } else {
+                    console.warn('TTS not supported');
+                    if (onEnd) onEnd();
+                }
+            };
+
+            const handlePlayAll = () => {
+                if (scenes.length === 0) return;
+                
+                setIsPlaying(true);
+                setCurrentScene(0);
+                playScene(0);
+            };
+
+            const playScene = (index) => {
+                if (index >= scenes.length) {
+                    setIsPlaying(false);
+                    return;
+                }
+
+                const scene = scenes[index];
+                speakText(scene.text, () => {
+                    setTimeout(() => {
+                        const nextIndex = index + 1;
+                        setCurrentScene(nextIndex);
+                        playScene(nextIndex);
+                    }, 1000);
+                });
+            };
+
+            const handleStop = () => {
+                setIsPlaying(false);
+                if (window.speechSynthesis) {
+                    window.speechSynthesis.cancel();
+                }
+            };
+
+            const handlePlaySingle = (index) => {
+                setCurrentScene(index);
+                speakText(scenes[index].text);
+            };
+
+            return (
+                <div className="min-h-screen p-6" style={{background: 'var(--bg-primary)'}}>
+                    <div className="max-w-7xl mx-auto">
+                        <div className="flex justify-between items-center mb-8">
+                            <h1 className="text-4xl font-bold bg-gradient-to-r from-purple-500 to-pink-500 bg-clip-text text-transparent">
+                                🎬 小说动漫化系统
+                            </h1>
+                            <button
+                                onClick={toggleTheme}
+                                className="px-4 py-2 rounded-lg font-medium transition-all"
+                                style={{background: 'var(--accent)', color: 'white'}}
+                            >
+                                {theme === 'light' ? '🌙 暗色' : '☀️ 亮色'}
+                            </button>
+                        </div>
+
+                        <div className="mb-8 p-6 rounded-xl shadow-lg" style={{background: 'var(--bg-secondary)'}}>
+                            <h2 className="text-2xl font-bold mb-4">📝 输入小说文本</h2>
+                            <textarea
+                                value={novelText}
+                                onChange={(e) => setNovelText(e.target.value)}
+                                placeholder="在这里粘贴或输入你的小说内容...&#10;&#10;示例：&#10;春日的樱花纷纷扬扬地飘落。小明站在校园的樱花树下，回想起与小红相遇的那个午后。那时的阳光温暖而明媚，她的笑容如同樱花般灿烂。&#10;&#10;「小明，你在想什么？」小红突然出现在他身后，轻声问道。&#10;&#10;小明转过身，看着眼前这个熟悉的身影。三年的时光匆匆而过，他们从陌生到熟悉，从朋友到..."
+                                className="w-full h-48 p-4 rounded-lg border-2 focus:outline-none focus:ring-2"
+                                style={{
+                                    background: 'var(--bg-primary)',
+                                    color: 'var(--text-primary)',
+                                    borderColor: 'var(--accent)'
+                                }}
+                            />
+                            <div className="mt-4 flex gap-4">
+                                <button
+                                    onClick={handleGenerate}
+                                    disabled={isGenerating}
+                                    className="px-6 py-3 rounded-lg font-bold text-white transition-all hover:scale-105 disabled:opacity-50"
+                                    style={{background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'}}
+                                >
+                                    {isGenerating ? '生成中...' : '🚀 生成动漫化作品'}
+                                </button>
+                                {scenes.length > 0 && (
+                                    <button
+                                        onClick={isPlaying ? handleStop : handlePlayAll}
+                                        className="px-6 py-3 rounded-lg font-bold text-white transition-all hover:scale-105"
+                                        style={{background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)'}}
+                                    >
+                                        {isPlaying ? '⏸️ 停止播放' : '▶️ 自动播放全部'}
+                                    </button>
+                                )}
+                            </div>
+                            {isGenerating && (
+                                <div className="mt-4">
+                                    <div className="w-full bg-gray-200 rounded-full h-2 dark:bg-gray-700">
+                                        <div
+                                            className="progress-bar rounded-full"
+                                            style={{width: `${progress}%`}}
+                                        />
+                                    </div>
+                                    <p className="mt-2 text-sm" style={{color: 'var(--text-secondary)'}}>
+                                        {progress < 30 ? '正在解析小说...' : 
+                                         progress < 60 ? '正在生成分镜...' : 
+                                         progress < 90 ? '正在创建动漫画面...' : '即将完成...'}
+                                    </p>
+                                </div>
+                            )}
+                        </div>
+
+                        {scenes.length > 0 && (
+                            <div className="mb-8">
+                                <h2 className="text-2xl font-bold mb-4">🎭 动漫化作品展示</h2>
+                                <div className="p-4 rounded-lg mb-4" style={{background: 'var(--bg-secondary)'}}>
+                                    <p className="text-sm" style={{color: 'var(--text-secondary)'}}>
+                                        共生成 {scenes.length} 个场景 | 当前: 第 {currentScene + 1} 幕
+                                        {scenes[0].characters.length > 0 && (
+                                            <span className="ml-4">
+                                                主要角色: {scenes[0].characters.join(', ')}
+                                            </span>
+                                        )}
+                                    </p>
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                    {scenes.map((scene, index) => (
+                                        <div
+                                            key={scene.scene_id}
+                                            className={`scene-card rounded-xl shadow-lg overflow-hidden fade-in ${
+                                                currentScene === index ? 'ring-4 ring-yellow-400' : ''
+                                            }`}
+                                            style={{background: 'var(--bg-secondary)'}}
+                                        >
+                                            <div
+                                                className="h-48 flex items-center justify-center text-6xl"
+                                                style={{background: scene.image.background}}
+                                            >
+                                                {scene.image.emoji}
+                                            </div>
+                                            <div className="p-4">
+                                                <h3 className="text-xl font-bold mb-2">{scene.title}</h3>
+                                                <p className="text-sm mb-2" style={{color: 'var(--text-secondary)'}}>
+                                                    {scene.summary}
+                                                </p>
+                                                <p className="text-sm mb-3" style={{color: 'var(--text-primary)'}}>
+                                                    {scene.text}
+                                                </p>
+                                                {scene.dialogue.length > 0 && (
+                                                    <div className="mb-3 p-2 rounded" style={{background: 'var(--bg-primary)'}}>
+                                                        <p className="text-xs font-bold mb-1">💬 对话:</p>
+                                                        {scene.dialogue.slice(0, 2).map((d, i) => (
+                                                            <p key={i} className="text-xs" style={{color: 'var(--text-secondary)'}}>
+                                                                "{d}"
+                                                            </p>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                                {scene.characters.length > 0 && (
+                                                    <div className="mb-3">
+                                                        <p className="text-xs font-bold mb-1">👥 登场角色:</p>
+                                                        <div className="flex flex-wrap gap-1">
+                                                            {scene.characters.map(char => (
+                                                                <span
+                                                                    key={char}
+                                                                    className="px-2 py-1 rounded text-xs"
+                                                                    style={{
+                                                                        background: 'var(--accent)',
+                                                                        color: 'white'
+                                                                    }}
+                                                                >
+                                                                    {char}
+                                                                </span>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                )}
+                                                <button
+                                                    onClick={() => handlePlaySingle(index)}
+                                                    className="w-full px-4 py-2 rounded-lg text-white font-medium transition-all hover:scale-105"
+                                                    style={{background: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)'}}
+                                                >
+                                                    🔊 播放本幕
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {scenes.length === 0 && !isGenerating && (
+                            <div className="text-center p-12 rounded-xl" style={{background: 'var(--bg-secondary)'}}>
+                                <p className="text-6xl mb-4">🎨</p>
+                                <p className="text-xl" style={{color: 'var(--text-secondary)'}}>
+                                    输入小说文本，开始创作你的动漫化作品吧！
+                                </p>
+                            </div>
+                        )}
+
+                        <div className="mt-8 p-6 rounded-xl" style={{background: 'var(--bg-secondary)'}}>
+                            <h3 className="text-lg font-bold mb-3">📖 系统说明</h3>
+                            <ul className="space-y-2 text-sm" style={{color: 'var(--text-secondary)'}}>
+                                <li>✅ 自动解析小说文本，识别角色和情节</li>
+                                <li>✅ 生成多幕动漫场景，每幕包含图像、文案和语音</li>
+                                <li>✅ 角色识别系统会自动提取主要角色并保持一致性</li>
+                                <li>✅ 支持单幕播放或全部自动播放</li>
+                                <li>✅ 使用 Web Speech API 进行文本转语音（需浏览器支持）</li>
+                                <li>✅ 亮色/暗色主题切换</li>
+                                <li>✅ 响应式设计，支持多种设备</li>
+                                <li>⚠️ 图像生成使用渐变色模拟（生产环境需接入 AI 图像 API）</li>
+                            </ul>
+                        </div>
+
+                        <div className="mt-4 text-center text-sm" style={{color: 'var(--text-secondary)'}}>
+                            <p>🚀 Novel to Anime Generator | Built with React + TailwindCSS</p>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<AnimeStoryGenerator />);
+    </script>
+</body>
+</html>
