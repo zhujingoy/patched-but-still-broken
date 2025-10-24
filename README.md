@@ -28,19 +28,40 @@ OPENAI_API_KEY=your_openai_api_key_here
 
 ## 使用方法
 
-### 基本用法
+### Web 界面（推荐）
+
+启动 Web 服务器：
+
+```bash
+python web_app.py
+```
+
+然后在浏览器中打开 `http://localhost:5000`
+
+Web 界面功能：
+- 📤 上传小说文件
+- ⚙️ 配置 API Key 和场景数量
+- 📊 实时查看生成进度
+- 🎬 在线播放动漫场景
+- 🎵 支持音频自动播放和手动控制
+- 🔊 音量调节
+- ⏮⏭ 场景前后导航
+
+### 命令行用法
+
+#### 基本用法
 
 ```bash
 python anime_generator.py 你的小说.txt
 ```
 
-### 限制场景数量
+#### 限制场景数量
 
 ```bash
 python anime_generator.py 你的小说.txt --max-scenes 10
 ```
 
-### 直接传入 API Key
+#### 直接传入 API Key
 
 ```bash
 python anime_generator.py 你的小说.txt --api-key sk-xxxxx
@@ -93,6 +114,9 @@ anime_output/
 - `tts_generator.py` - 语音生成器（基于 Google TTS）
 - `scene_composer.py` - 场景组合器
 - `anime_generator.py` - 主程序和命令行接口
+- `web_app.py` - Flask Web 服务器
+- `templates/` - HTML 模板文件
+- `static/` - CSS 和 JavaScript 静态资源
 
 ## 注意事项
 
