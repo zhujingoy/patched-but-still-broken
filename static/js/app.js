@@ -528,7 +528,7 @@ function showPaymentDialog(paymentAmount, wordCount) {
                 需要支付费用：<strong style="color: #ff6b6b; font-size: 24px;">¥${paymentAmount.toFixed(2)}</strong>
             </p>
             <p style="font-size: 14px; color: #999; margin-top: 20px;">
-                💡 内测版本限时免费
+                💡 提示：当前为内测版本，您可以点击"跳过"按钮继续使用
             </p>
             <div style="margin-top: 30px; display: flex; gap: 15px; justify-content: center;">
                 <button id="payment-skip-btn" style="
