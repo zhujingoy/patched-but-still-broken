@@ -27,19 +27,31 @@ def init_db():
                 upload_content_size INTEGER NOT NULL,
                 generated_scene_count INTEGER DEFAULT 0,
                 generated_content_size INTEGER DEFAULT 0,
+                username TEXT,
+                filename TEXT,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         ''')
+        
+        cursor.execute("PRAGMA table_info(generation_statistics)")
+        columns = [column[1] for column in cursor.fetchall()]
+        
+        if 'username' not in columns:
+            cursor.execute('ALTER TABLE generation_statistics ADD COLUMN username TEXT')
+        
+        if 'filename' not in columns:
+            cursor.execute('ALTER TABLE generation_statistics ADD COLUMN filename TEXT')
+        
         conn.commit()
 
-def insert_statistics(session_id, client_address, upload_file_count, upload_text_chars, upload_content_size):
+def insert_statistics(session_id, client_address, upload_file_count, upload_text_chars, upload_content_size, username=None, filename=None):
     with get_db_connection() as conn:
         cursor = conn.cursor()
         cursor.execute('''
             INSERT INTO generation_statistics 
-            (session_id, client_address, upload_file_count, upload_text_chars, upload_content_size)
-            VALUES (?, ?, ?, ?, ?)
-        ''', (session_id, client_address, upload_file_count, upload_text_chars, upload_content_size))
+            (session_id, client_address, upload_file_count, upload_text_chars, upload_content_size, username, filename)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        ''', (session_id, client_address, upload_file_count, upload_text_chars, upload_content_size, username, filename))
         conn.commit()
         return cursor.lastrowid
 
@@ -53,12 +65,19 @@ def update_generation_stats(session_id, generated_scene_count, generated_content
         ''', (generated_scene_count, generated_content_size, session_id))
         conn.commit()
 
-def get_statistics(session_id=None):
+def get_statistics(session_id=None, username=None, limit=None):
     with get_db_connection() as conn:
         cursor = conn.cursor()
         if session_id:
             cursor.execute('SELECT * FROM generation_statistics WHERE session_id = ?', (session_id,))
-            return dict(cursor.fetchone()) if cursor.fetchone() else None
+            result = cursor.fetchone()
+            return dict(result) if result else None
+        elif username:
+            query = 'SELECT * FROM generation_statistics WHERE username = ? ORDER BY created_at DESC'
+            if limit:
+                query += f' LIMIT {limit}'
+            cursor.execute(query, (username,))
+            return [dict(row) for row in cursor.fetchall()]
         else:
             cursor.execute('SELECT * FROM generation_statistics ORDER BY created_at DESC')
             return [dict(row) for row in cursor.fetchall()]

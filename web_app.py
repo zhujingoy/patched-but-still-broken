@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, jsonify, send_from_directory
+from flask import Flask, render_template, request, jsonify, send_from_directory, session, redirect, url_for
 from flask_cors import CORS
 import os
 import json
@@ -7,10 +7,13 @@ from anime_generator import AnimeGenerator
 import threading
 import uuid
 import jieba
-from statistics_db import insert_statistics, update_generation_stats
+from statistics_db import insert_statistics, update_generation_stats, get_statistics
+from user_auth import register_user, login_user, get_user_by_id
+from functools import wraps
 
 app = Flask(__name__, static_folder='static', template_folder='templates')
-CORS(app)
+app.secret_key = os.urandom(24)
+CORS(app, supports_credentials=True)
 
 UPLOAD_FOLDER = 'uploads'
 ALLOWED_EXTENSIONS = {'txt'}
@@ -72,15 +75,76 @@ def generate_anime_async(task_id, novel_path, max_scenes, api_key, provider='qin
             'message': str(e)
         }
 
+def login_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'user_id' not in session:
+            return jsonify({'error': '请先登录'}), 401
+        return f(*args, **kwargs)
+    return decorated_function
+
 @app.route('/')
 def index():
     return render_template('index.html')
+
+@app.route('/login')
+def login_page():
+    return render_template('login.html')
 
 @app.route('/settings')
 def settings():
     return render_template('settings.html')
 
+@app.route('/api/register', methods=['POST'])
+def register():
+    data = request.get_json()
+    username = data.get('username', '')
+    password = data.get('password', '')
+    
+    success, message = register_user(username, password)
+    
+    if success:
+        return jsonify({'message': message}), 200
+    else:
+        return jsonify({'error': message}), 400
+
+@app.route('/api/login', methods=['POST'])
+def login():
+    data = request.get_json()
+    username = data.get('username', '')
+    password = data.get('password', '')
+    
+    success, user, message = login_user(username, password)
+    
+    if success:
+        session['user_id'] = user['id']
+        session['username'] = user['username']
+        return jsonify({'message': message, 'user': {'username': user['username']}}), 200
+    else:
+        return jsonify({'error': message}), 401
+
+@app.route('/api/logout', methods=['POST'])
+def logout():
+    session.clear()
+    return jsonify({'message': '已退出登录'}), 200
+
+@app.route('/api/current_user', methods=['GET'])
+def current_user():
+    if 'user_id' in session:
+        user = get_user_by_id(session['user_id'])
+        if user:
+            return jsonify({'user': {'username': user['username']}}), 200
+    return jsonify({'user': None}), 200
+
+@app.route('/api/history', methods=['GET'])
+@login_required
+def get_history():
+    username = session.get('username')
+    history = get_statistics(username=username, limit=10)
+    return jsonify({'history': history}), 200
+
 @app.route('/api/upload', methods=['POST'])
+@login_required
 def upload_novel():
     if 'novel' not in request.files:
         return jsonify({'error': '没有上传文件'}), 400
@@ -103,12 +167,15 @@ def upload_novel():
             content = f.read()
             upload_text_chars = len(content)
         
+        username = session.get('username')
         insert_statistics(
             session_id=task_id,
             client_address=client_address,
             upload_file_count=upload_file_count,
             upload_text_chars=upload_text_chars,
-            upload_content_size=upload_content_size
+            upload_content_size=upload_content_size,
+            username=username,
+            filename=filename
         )
         
         max_scenes = request.form.get('max_scenes', type=int)

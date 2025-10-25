@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>登录/注册 - 小说动漫化系统</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <style>
+        .auth-container {
+            max-width: 400px;
+            margin: 50px auto;
+            padding: 30px;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .auth-tabs {
+            display: flex;
+            margin-bottom: 20px;
+        }
+        .auth-tab {
+            flex: 1;
+            padding: 10px;
+            text-align: center;
+            cursor: pointer;
+            border-bottom: 2px solid #ddd;
+        }
+        .auth-tab.active {
+            border-bottom-color: #4a90e2;
+            color: #4a90e2;
+            font-weight: bold;
+        }
+        .auth-form {
+            display: none;
+        }
+        .auth-form.active {
+            display: block;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        .form-group input {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            font-size: 1em;
+        }
+        .error-message {
+            color: #e74c3c;
+            margin-top: 10px;
+            display: none;
+        }
+        .success-message {
+            color: #27ae60;
+            margin-top: 10px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📚 小说动漫化系统</h1>
+            <p class="subtitle">请先登录或注册</p>
+        </header>
+
+        <div class="auth-container">
+            <div class="auth-tabs">
+                <div class="auth-tab active" onclick="switchTab('login')">登录</div>
+                <div class="auth-tab" onclick="switchTab('register')">注册</div>
+            </div>
+
+            <div id="login-form" class="auth-form active">
+                <div class="form-group">
+                    <label for="login-username">用户名:</label>
+                    <input type="text" id="login-username" placeholder="请输入用户名">
+                </div>
+                <div class="form-group">
+                    <label for="login-password">密码:</label>
+                    <input type="password" id="login-password" placeholder="请输入密码">
+                </div>
+                <button class="btn btn-primary" onclick="handleLogin()" style="width: 100%;">登录</button>
+                <div id="login-error" class="error-message"></div>
+            </div>
+
+            <div id="register-form" class="auth-form">
+                <div class="form-group">
+                    <label for="register-username">用户名:</label>
+                    <input type="text" id="register-username" placeholder="至少3个字符">
+                </div>
+                <div class="form-group">
+                    <label for="register-password">密码:</label>
+                    <input type="password" id="register-password" placeholder="至少6个字符">
+                </div>
+                <div class="form-group">
+                    <label for="register-password-confirm">确认密码:</label>
+                    <input type="password" id="register-password-confirm" placeholder="再次输入密码">
+                </div>
+                <button class="btn btn-success" onclick="handleRegister()" style="width: 100%;">注册</button>
+                <div id="register-error" class="error-message"></div>
+                <div id="register-success" class="success-message"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function switchTab(tab) {
+            document.querySelectorAll('.auth-tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.auth-form').forEach(f => f.classList.remove('active'));
+            
+            if (tab === 'login') {
+                document.querySelectorAll('.auth-tab')[0].classList.add('active');
+                document.getElementById('login-form').classList.add('active');
+            } else {
+                document.querySelectorAll('.auth-tab')[1].classList.add('active');
+                document.getElementById('register-form').classList.add('active');
+            }
+        }
+
+        async function handleLogin() {
+            const username = document.getElementById('login-username').value;
+            const password = document.getElementById('login-password').value;
+            const errorDiv = document.getElementById('login-error');
+
+            if (!username || !password) {
+                errorDiv.textContent = '请输入用户名和密码';
+                errorDiv.style.display = 'block';
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    credentials: 'include',
+                    body: JSON.stringify({ username, password })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    window.location.href = '/';
+                } else {
+                    errorDiv.textContent = data.error || '登录失败';
+                    errorDiv.style.display = 'block';
+                }
+            } catch (error) {
+                errorDiv.textContent = '网络错误，请稍后重试';
+                errorDiv.style.display = 'block';
+            }
+        }
+
+        async function handleRegister() {
+            const username = document.getElementById('register-username').value;
+            const password = document.getElementById('register-password').value;
+            const passwordConfirm = document.getElementById('register-password-confirm').value;
+            const errorDiv = document.getElementById('register-error');
+            const successDiv = document.getElementById('register-success');
+
+            errorDiv.style.display = 'none';
+            successDiv.style.display = 'none';
+
+            if (!username || !password || !passwordConfirm) {
+                errorDiv.textContent = '请填写所有字段';
+                errorDiv.style.display = 'block';
+                return;
+            }
+
+            if (password !== passwordConfirm) {
+                errorDiv.textContent = '两次输入的密码不一致';
+                errorDiv.style.display = 'block';
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/register', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ username, password })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    successDiv.textContent = '注册成功！请登录';
+                    successDiv.style.display = 'block';
+                    document.getElementById('register-username').value = '';
+                    document.getElementById('register-password').value = '';
+                    document.getElementById('register-password-confirm').value = '';
+                    setTimeout(() => {
+                        switchTab('login');
+                        document.getElementById('login-username').value = username;
+                    }, 1500);
+                } else {
+                    errorDiv.textContent = data.error || '注册失败';
+                    errorDiv.style.display = 'block';
+                }
+            } catch (error) {
+                errorDiv.textContent = '网络错误，请稍后重试';
+                errorDiv.style.display = 'block';
+            }
+        }
+
+        document.getElementById('login-password').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                handleLogin();
+            }
+        });
+
+        document.getElementById('register-password-confirm').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                handleRegister();
+            }
+        });
+    </script>
+</body>
+</html>
