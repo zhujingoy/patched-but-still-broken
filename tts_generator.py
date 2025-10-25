@@ -78,6 +78,7 @@ class TTSGenerator:
             return None
     
     def generate_speech_for_scene(self, scene_text: str, scene_index: int) -> Optional[str]:
+        # scene_text 是场景的剧情文字（narration），生成的语音将与前端显示的文字一致
         output_path = os.path.join(self.cache_dir, f"scene_{scene_index:04d}.mp3")
         return self.generate_speech(scene_text, output_path)
     
