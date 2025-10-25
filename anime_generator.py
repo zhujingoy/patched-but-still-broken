@@ -40,8 +40,7 @@ class AnimeGenerator:
     def generate_from_novel(self, novel_path: str, 
                           max_scenes: int = None,
                           character_descriptions: Dict[str, str] = None,
-                          generate_video: bool = False,
-                          generate_storyboard: bool = True) -> Dict:
+                          generate_video: bool = False) -> Dict:
         with open(novel_path, 'r', encoding='utf-8') as f:
             novel_text = f.read()
         
@@ -106,8 +105,7 @@ class AnimeGenerator:
                 scene_metadata = self.scene_composer.create_scene_with_ai_analysis(
                     scene_index=scene_idx,
                     scene_info=scene_info,
-                    generate_video=generate_video,
-                    generate_storyboard=generate_storyboard
+                    generate_video=generate_video
                 )
                 
                 all_scenes.append(scene_metadata)
@@ -164,8 +162,7 @@ class AnimeGenerator:
                 {
                     'scene_index': s['scene_index'],
                     'folder': s['folder'],
-                    'characters': s['characters'],
-                    'storyboard_shots': s.get('storyboard_shots', [])
+                    'characters': s['characters']
                 }
                 for s in all_scenes
             ]

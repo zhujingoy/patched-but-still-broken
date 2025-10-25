@@ -17,7 +17,6 @@ class NovelAnalyzer:
 2. 人物(Characters)：识别所有出现的人物，包括主要角色和次要角色，提取人物的外貌、性格特征
 3. 对话(Dialogues)：提取人物之间的对话内容，包括说话者的情绪状态
 4. 叙述(Narration)：提取旁白和描述性文本
-5. 分镜脚本(Storyboard)：根据剧情和对话生成连贯的图片序列
 
 请以JSON格式返回结果，格式如下：
 {
@@ -31,15 +30,6 @@ class NovelAnalyzer:
       "narration": "场景叙述文本",
       "dialogues": [
         {"character": "角色名", "text": "对话内容", "emotion": "情绪状态"}
-      ],
-      "storyboard_shots": [
-        {
-          "shot_type": "特写/中景/全景/过肩镜头/双人镜头", 
-          "description": "镜头描述", 
-          "focus": "焦点内容",
-          "speaking_character": "说话的角色(如果有)",
-          "dialogue_index": 对话索引(如果对应对话)
-        }
       ]
     }
   ],
@@ -54,15 +44,10 @@ class NovelAnalyzer:
 }
 
 重要规则：
-1. 为每个对话生成至少一个镜头，说话角色应该有特写或中景镜头
-2. 角色说话时，优先使用「特写」镜头聚焦说话角色的表情和神态
-3. 对话场景应该生成多张连贯图片，展现对话过程
-4. 确保所有镜头描述包含统一的画风关键词(如：anime style, consistent art style)
-5. 每个场景至少生成3-5个镜头，对话较多的场景可以生成更多镜头
-6. 连续对话时要切换视角，避免重复相同镜头
-7. **角色一致性要求**：同一场景中角色的服饰、发型、脸型必须完全一致，只能通过微表情体现情绪变化
-8. **环境一致性要求**：同一场景的所有镜头必须保持相同的环境背景、光线和氛围
-9. **情绪表达**：对话的emotion字段必须详细描述情绪（如：happy/开心, sad/悲伤, angry/愤怒, surprised/惊讶, worried/担忧等）"""
+1. 场景描述应该详细，包含环境、氛围、人物位置等信息
+2. 确保场景描述包含统一的画风关键词(如：anime style, consistent art style)
+3. **角色一致性要求**：同一场景中角色的服饰、发型、脸型必须完全一致
+4. **情绪表达**：对话的emotion字段必须详细描述情绪（如：happy/开心, sad/悲伤, angry/愤怒, surprised/惊讶, worried/担忧等）"""
 
         try:
             response = self.client.chat.completions.create(

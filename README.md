@@ -8,7 +8,6 @@
 - ✨ 自动解析小说章节和段落
 - 👥 智能提取小说角色并保持角色一致性
 - 🎭 **角色立绘生成**：为每个主要角色生成稳定的外观设定和立绘
-- 🎬 **多镜头分镜**：对每一幕剧情生成 3-5 个不同角度的场景图片（特写、中景、全景等）
 - 🎨 使用 AI 生成场景图片（支持七牛 Gemini 和 OpenAI DALL-E 3）
 - 🗣️ 自动生成中文语音配音（Google TTS）
 - 🎥 **视频生成**：支持将场景图片转换为视频（可选）
@@ -98,25 +97,6 @@ anime_output/
   project_metadata.json  # 整个项目的元数据
 ```
 
-### AI 分镜模式输出
-
-```
-output_scenes/
-  scene_0000/
-    shot_00.png     # 第一个分镜镜头（例如：特写）
-    shot_01.png     # 第二个分镜镜头（例如：中景）
-    shot_02.png     # 第三个分镜镜头（例如：全景）
-    shot_03.png     # 第四个分镜镜头（例如：过肩镜头）
-    narration.mp3   # 语音配音
-    metadata.json   # 场景元数据（包含所有镜头信息）
-  scene_0001/
-    ...
-image_cache/
-  char_*.png        # 角色立绘缓存
-  shot_*.png        # 分镜图片缓存
-anime_output/
-  project_metadata.json  # 整个项目的元数据
-```
 
 ## 工作原理（第三版优化流程）
 
@@ -127,21 +107,18 @@ anime_output/
   - **人物 (Characters)**：角色名称、外貌、性格特征
   - **对话 (Dialogues)**：角色对话内容
   - **叙述 (Narration)**：旁白和描述性文本
-  - **分镜脚本 (Storyboard)**：为每个场景生成 3-5 个不同镜头描述
 
 ### 第二阶段：角色立绘生成
 - 根据 AI 分析的角色信息生成稳定的外观设定
 - 为每个角色生成「角色立绘」（character portrait）
 - 确保角色在所有场景中保持一致的外观
 
-### 第三阶段：多镜头场景生成
-- 根据 AI 分析的剧情信息和分镜脚本生成对应画面
-- 为每一幕剧情生成 3-5 张不同角度的场景图片
-- 支持多种镜头类型：特写、中景、全景、过肩镜头等
+### 第三阶段：场景生成
+- 根据 AI 分析的剧情信息生成对应画面
+- 为每个场景生成一张场景图片
 - 结合角色立绘信息，确保场景中角色准确呈现
-- 生成的多张图片可直接作为分镜素材使用
 - 将文字叠加到图片上
-- 使用 gTTS 生成语音配音
+- 使用 gTTS 生成语音配音，确保声音与场景匹配
 
 ## 核心模块
 
@@ -151,7 +128,7 @@ anime_output/
 - `image_generator.py` - 图片生成器（支持七牛 Gemini 和 OpenAI DALL-E 3）
 - `tts_generator.py` - 语音生成器（基于 Google TTS）
 - `video_generator.py` - 视频生成器（可选）
-- `scene_composer.py` - 场景组合器（支持多镜头分镜生成）
+- `scene_composer.py` - 场景组合器
 - `anime_generator.py` - 主程序和命令行接口
 - `web_app.py` - Flask Web 服务器
 - `templates/` - HTML 模板文件
