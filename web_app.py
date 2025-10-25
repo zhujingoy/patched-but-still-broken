@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, jsonify, send_from_directory, session, redirect, url_for
+from flask import Flask, render_template, request, jsonify, send_from_directory, session, redirect, url_for, send_file
 from flask_cors import CORS
 import os
 import json
@@ -10,6 +10,8 @@ import jieba
 from statistics_db import insert_statistics, update_generation_stats, get_statistics
 from user_auth import register_user, login_user, get_user_by_id
 from functools import wraps
+import zipfile
+import io
 
 app = Flask(__name__, static_folder='static', template_folder='templates')
 app.secret_key = os.urandom(24)
@@ -246,6 +248,44 @@ def serve_file(filepath):
     directory = os.path.dirname(filepath)
     filename = os.path.basename(filepath)
     return send_from_directory(directory, filename)
+
+@app.route('/api/download/<task_id>', methods=['GET'])
+def download_content(task_id):
+    if task_id not in generation_status:
+        return jsonify({'error': '任务不存在'}), 404
+    
+    status = generation_status[task_id]
+    if status['status'] != 'completed':
+        return jsonify({'error': '任务未完成'}), 400
+    
+    metadata = status.get('metadata', {})
+    scenes = metadata.get('scenes', [])
+    
+    if not scenes:
+        return jsonify({'error': '没有可下载的内容'}), 404
+    
+    memory_file = io.BytesIO()
+    
+    with zipfile.ZipFile(memory_file, 'w', zipfile.ZIP_DEFLATED) as zf:
+        for idx, scene_info in enumerate(scenes):
+            scene_folder = scene_info['folder']
+            scene_prefix = f'scene_{idx + 1:03d}'
+            
+            if os.path.exists(scene_folder):
+                for root, dirs, files in os.walk(scene_folder):
+                    for file in files:
+                        file_path = os.path.join(root, file)
+                        arcname = os.path.join(scene_prefix, file)
+                        zf.write(file_path, arcname)
+    
+    memory_file.seek(0)
+    
+    return send_file(
+        memory_file,
+        mimetype='application/zip',
+        as_attachment=True,
+        download_name=f'anime_{task_id}.zip'
+    )
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)
