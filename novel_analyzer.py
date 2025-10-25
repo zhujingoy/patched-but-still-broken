@@ -57,7 +57,7 @@ class NovelAnalyzer:
                     {"role": "user", "content": f"请分析以下小说文本：\n\n{text}"}
                 ],
                 temperature=0.7,
-                max_tokens=4000
+                max_tokens=8000
             )
             
             result_text = response.choices[0].message.content
@@ -126,7 +126,7 @@ class NovelAnalyzer:
         if description:
             prompt_parts.append(description)
         elif narration:
-            prompt_parts.append(narration[:200])
+            prompt_parts.append(narration[:500])
         
         if location:
             prompt_parts.append(f"地点：{location}")
@@ -168,7 +168,14 @@ class NovelAnalyzer:
         current_chunk = ""
         
         for para in paragraphs:
-            if len(current_chunk) + len(para) + 1 <= max_chunk_size:
+            if len(para) > max_chunk_size:
+                if current_chunk:
+                    chunks.append(current_chunk)
+                    current_chunk = ""
+                
+                for i in range(0, len(para), max_chunk_size):
+                    chunks.append(para[i:i + max_chunk_size])
+            elif len(current_chunk) + len(para) + 1 <= max_chunk_size:
                 if current_chunk:
                     current_chunk += "\n" + para
                 else:

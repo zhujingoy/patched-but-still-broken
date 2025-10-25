@@ -106,7 +106,7 @@ class SceneComposer:
         return found_characters
     
     def _generate_scene_description(self, text: str, characters: List[str]) -> str:
-        text_snippet = text[:100] if len(text) > 100 else text
+        text_snippet = text[:500] if len(text) > 500 else text
         
         char_list = "、".join(characters) if characters else "人物"
         

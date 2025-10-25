@@ -49,11 +49,8 @@ class AnimeGenerator:
         
         if self.use_ai_analysis and self.novel_analyzer:
             print("=== 第一阶段：使用 DeepSeek AI 分析小说文本 ===")
-            max_chunks = None
-            if max_scenes:
-                max_chunks = (max_scenes + 2) // 3
             
-            analysis_result = self.novel_analyzer.analyze_novel_in_chunks(novel_text, max_chunks=max_chunks)
+            analysis_result = self.novel_analyzer.analyze_novel_in_chunks(novel_text, max_chunks=None)
             
             analyzed_scenes = analysis_result.get('scenes', [])
             analyzed_characters = analysis_result.get('characters', [])
