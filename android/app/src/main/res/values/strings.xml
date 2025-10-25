@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">小说动漫化</string>
+    <string name="loading">加载中...</string>
+    <string name="error_connection">无法连接到服务器</string>
+    <string name="retry">重试</string>
+    <string name="exit">退出</string>
+</resources>
