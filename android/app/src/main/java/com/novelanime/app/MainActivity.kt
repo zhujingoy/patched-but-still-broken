@@ -24,7 +24,8 @@ class MainActivity : AppCompatActivity() {
     // 配置你的 Flask 服务器地址
     // 如果在同一设备上运行服务器，使用 localhost
     // 如果在局域网其他设备上，使用该设备的 IP 地址
-    private val SERVER_URL = "http://10.0.2.2:5000"  // Android 模拟器访问主机的特殊地址
+    private val SERVER_URL = "http://121.29.19.131:80"
+    // private val SERVER_URL = "http://10.0.2.2:5000"  // Android 模拟器访问主机的特殊地址
     // private val SERVER_URL = "http://192.168.1.100:5000"  // 替换为你的实际 IP 地址
 
     override fun onCreate(savedInstanceState: Bundle?) {
