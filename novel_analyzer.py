@@ -126,7 +126,7 @@ class NovelAnalyzer:
         if description:
             prompt_parts.append(description)
         elif narration:
-            prompt_parts.append(narration[:200])
+            prompt_parts.append(narration)
         
         if location:
             prompt_parts.append(f"地点：{location}")
@@ -144,7 +144,7 @@ class NovelAnalyzer:
         result = {
             "scenes": [{
                 "scene_number": 1,
-                "description": text[:200],
+                "description": text[:500] if len(text) > 500 else text,
                 "location": "",
                 "time": "",
                 "characters": [],
@@ -168,7 +168,14 @@ class NovelAnalyzer:
         current_chunk = ""
         
         for para in paragraphs:
-            if len(current_chunk) + len(para) + 1 <= max_chunk_size:
+            if len(para) > max_chunk_size:
+                if current_chunk:
+                    chunks.append(current_chunk)
+                    current_chunk = ""
+                
+                for i in range(0, len(para), max_chunk_size):
+                    chunks.append(para[i:i + max_chunk_size])
+            elif len(current_chunk) + len(para) + 1 <= max_chunk_size:
                 if current_chunk:
                     current_chunk += "\n" + para
                 else:
