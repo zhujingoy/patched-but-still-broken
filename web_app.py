@@ -29,12 +29,15 @@ def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 def generate_anime_async(task_id, novel_path, max_scenes, api_key, provider='qiniu', custom_prompt=None, enable_video=False, use_ai_analysis=True, use_storyboard=True):
-    try:
+    def update_status(progress, message):
         generation_status[task_id] = {
             'status': 'processing',
-            'progress': 0,
-            'message': '正在解析小说...'
+            'progress': progress,
+            'message': message
         }
+    
+    try:
+        update_status(0, '正在解析小说...')
         
         generator = AnimeGenerator(
             openai_api_key=api_key, 
@@ -43,11 +46,15 @@ def generate_anime_async(task_id, novel_path, max_scenes, api_key, provider='qin
             enable_video=enable_video,
             use_ai_analysis=use_ai_analysis
         )
+        
+        update_status(5, '开始分析小说内容...')
+        
         metadata = generator.generate_from_novel(
             novel_path, 
             max_scenes=max_scenes, 
             generate_video=enable_video,
-            use_storyboard=use_storyboard
+            use_storyboard=use_storyboard,
+            progress_callback=update_status
         )
         
         generated_scene_count = len(metadata.get('scenes', []))
