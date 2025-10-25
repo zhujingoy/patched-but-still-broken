@@ -28,7 +28,7 @@ generation_status = {}
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
-def generate_anime_async(task_id, novel_path, max_scenes, api_key, provider='qiniu', custom_prompt=None, enable_video=False, use_ai_analysis=True, user_id=None):
+def generate_anime_async(task_id, novel_path, max_scenes, api_key, provider='qiniu', custom_prompt=None, enable_video=False, use_storyboard=True, user_id=None):
     try:
         generation_status[task_id] = {
             'status': 'processing',
@@ -41,7 +41,7 @@ def generate_anime_async(task_id, novel_path, max_scenes, api_key, provider='qin
             provider=provider, 
             custom_prompt=custom_prompt, 
             enable_video=enable_video,
-            use_ai_analysis=use_ai_analysis
+            use_storyboard=use_storyboard
         )
         metadata = generator.generate_from_novel(
             novel_path, 
@@ -49,12 +49,15 @@ def generate_anime_async(task_id, novel_path, max_scenes, api_key, provider='qin
             generate_video=enable_video
         )
         
-        generated_scene_count = len(metadata.get('scenes', []))
+        mode = metadata.get('mode', 'scene')
+        generated_scene_count = len(metadata.get('scenes', [])) if mode == 'scene' else len(metadata.get('shots', []))
         generated_content_size = 0
-        for scene_info in metadata.get('scenes', []):
-            scene_folder = scene_info['folder']
-            if os.path.exists(scene_folder):
-                for root, dirs, files in os.walk(scene_folder):
+        
+        items_key = 'scenes' if mode == 'scene' else 'shots'
+        for item_info in metadata.get(items_key, []):
+            item_folder = item_info['folder']
+            if os.path.exists(item_folder):
+                for root, dirs, files in os.walk(item_folder):
                     for file in files:
                         file_path = os.path.join(root, file)
                         generated_content_size += os.path.getsize(file_path)
@@ -210,7 +213,7 @@ def upload_novel():
         provider = request.form.get('api_provider', 'qiniu')
         custom_prompt = request.form.get('custom_prompt', '')
         enable_video = request.form.get('enable_video', 'false').lower() == 'true'
-        use_ai_analysis = request.form.get('use_ai_analysis', 'true').lower() == 'true'
+        use_storyboard = request.form.get('use_storyboard', 'true').lower() == 'true'
         
         if not api_key:
             api_key = os.getenv('OPENAI_API_KEY')
@@ -222,7 +225,7 @@ def upload_novel():
         
         thread = threading.Thread(
             target=generate_anime_async,
-            args=(task_id, file_path, max_scenes, api_key, provider, custom_prompt, enable_video, use_ai_analysis, user_id)
+            args=(task_id, file_path, max_scenes, api_key, provider, custom_prompt, enable_video, use_storyboard, user_id)
         )
         thread.start()
         
@@ -260,24 +263,41 @@ def get_scenes(task_id):
         metadata = json.loads(db_record['metadata'])
     
     scenes = []
+    mode = metadata.get('mode', 'scene')
     
-    for scene_info in metadata.get('scenes', []):
-        scene_folder = scene_info['folder']
-        metadata_path = os.path.join(scene_folder, 'metadata.json')
-        
-        if os.path.exists(metadata_path):
-            with open(metadata_path, 'r', encoding='utf-8') as f:
-                scene_data = json.load(f)
-                
-                scene_data['image_url'] = f"/api/file/{scene_folder}/scene.png"
-                scene_data['audio_url'] = f"/api/file/{scene_folder}/narration.mp3"
-                if scene_data.get('video_path'):
-                    scene_data['video_url'] = f"/api/file/{scene_folder}/scene.mp4"
-                scenes.append(scene_data)
+    if mode == 'storyboard':
+        for shot_info in metadata.get('shots', []):
+            shot_folder = shot_info['folder']
+            metadata_path = os.path.join(shot_folder, 'metadata.json')
+            
+            if os.path.exists(metadata_path):
+                with open(metadata_path, 'r', encoding='utf-8') as f:
+                    shot_data = json.load(f)
+                    
+                    shot_data['image_url'] = f"/api/file/{shot_folder}/shot.png"
+                    shot_data['audio_url'] = f"/api/file/{shot_folder}/audio.mp3"
+                    if shot_data.get('video_path'):
+                        shot_data['video_url'] = f"/api/file/{shot_folder}/shot.mp4"
+                    scenes.append(shot_data)
+    else:
+        for scene_info in metadata.get('scenes', []):
+            scene_folder = scene_info['folder']
+            metadata_path = os.path.join(scene_folder, 'metadata.json')
+            
+            if os.path.exists(metadata_path):
+                with open(metadata_path, 'r', encoding='utf-8') as f:
+                    scene_data = json.load(f)
+                    
+                    scene_data['image_url'] = f"/api/file/{scene_folder}/scene.png"
+                    scene_data['audio_url'] = f"/api/file/{scene_folder}/narration.mp3"
+                    if scene_data.get('video_path'):
+                        scene_data['video_url'] = f"/api/file/{scene_folder}/scene.mp4"
+                    scenes.append(scene_data)
     
     return jsonify({
         'total_scenes': len(scenes),
-        'scenes': scenes
+        'scenes': scenes,
+        'mode': mode
     })
 
 @app.route('/api/file/<path:filepath>')

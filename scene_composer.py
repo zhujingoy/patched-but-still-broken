@@ -58,6 +58,8 @@ class SceneComposer:
         else:
             output_image = None
         
+        # 使用剧情文字(scene_text/narration)生成语音
+        # 这确保语音内容与前端显示的剧情文字完全一致
         audio_file = self.tts_gen.generate_speech_for_scene(scene_text, scene_index)
         
         if audio_file:
@@ -80,9 +82,10 @@ class SceneComposer:
                     import shutil
                     shutil.copy(video_file, output_video)
         
+        # 保存元数据：text字段包含剧情文字，前端会显示并播放对应语音
         metadata = {
             'scene_index': scene_index,
-            'text': scene_text,
+            'text': scene_text,  # 剧情文字，用于前端显示和语音生成
             'description': scene_description,
             'characters': characters_in_scene,
             'image_path': output_image,
@@ -138,6 +141,8 @@ class SceneComposer:
         scene_folder = os.path.join(self.output_dir, f"scene_{scene_index:04d}")
         os.makedirs(scene_folder, exist_ok=True)
         
+        # 提取剧情文字（narration）- 这是小说中的情节描述
+        # 用于：1) 显示在前端图片下方  2) 生成配音
         scene_text = scene_info.get('narration', '')
         scene_description = scene_info.get('description', '')
         characters_in_scene = scene_info.get('characters', [])
@@ -171,6 +176,8 @@ class SceneComposer:
                 output_image
             )
         
+        # 使用剧情文字(scene_text/narration)生成语音
+        # 这确保语音内容与前端显示的剧情文字完全一致
         audio_file = self.tts_gen.generate_speech_for_scene(scene_text, scene_index)
         
         if audio_file:
@@ -193,9 +200,10 @@ class SceneComposer:
                     import shutil
                     shutil.copy(video_file, output_video)
         
+        # 保存元数据：text字段包含剧情文字，前端会显示并播放对应语音
         metadata = {
             'scene_index': scene_index,
-            'text': scene_text,
+            'text': scene_text,  # 剧情文字，用于前端显示和语音生成
             'description': scene_description,
             'characters': characters_in_scene,
             'image_path': output_image,
