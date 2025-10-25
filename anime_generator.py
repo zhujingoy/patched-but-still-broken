@@ -44,7 +44,8 @@ class AnimeGenerator:
                           max_scenes: int = None,
                           character_descriptions: Dict[str, str] = None,
                           generate_video: bool = False,
-                          use_storyboard: bool = True) -> Dict:
+                          use_storyboard: bool = True,
+                          progress_callback = None) -> Dict:
         with open(novel_path, 'r', encoding='utf-8') as f:
             novel_text = f.read()
         
@@ -53,6 +54,8 @@ class AnimeGenerator:
         
         if self.use_ai_analysis and self.novel_analyzer:
             print("=== 第一阶段：使用 DeepSeek AI 分析小说文本 ===")
+            if progress_callback:
+                progress_callback(10, '正在使用 AI 分析小说内容...')
             
             analysis_result = self.novel_analyzer.analyze_novel_in_chunks(novel_text, max_chunks=None)
             
@@ -60,15 +63,22 @@ class AnimeGenerator:
             analyzed_characters = analysis_result.get('characters', [])
             
             print(f"AI分析完成，识别到 {len(analyzed_scenes)} 个场景，{len(analyzed_characters)} 个角色")
+            if progress_callback:
+                progress_callback(20, f'分析完成：识别到 {len(analyzed_scenes)} 个场景，{len(analyzed_characters)} 个角色')
             
             print("\n=== 第二阶段：为主要角色生成详细设计档案 ===")
             character_portraits = {}
             character_designs = {}
             
-            for char_info in analyzed_characters[:10]:
+            total_chars = min(len(analyzed_characters), 10)
+            for idx, char_info in enumerate(analyzed_characters[:10]):
                 char_name = char_info.get('name', '')
                 if not char_name:
                     continue
+                
+                if progress_callback:
+                    char_progress = 20 + int((idx / total_chars) * 15)
+                    progress_callback(char_progress, f'正在生成角色 "{char_name}" 的设计档案... ({idx+1}/{total_chars})')
                 
                 print(f"为角色 '{char_name}' 生成设计档案...")
                 design = self.novel_analyzer.generate_character_design(char_info)
@@ -98,9 +108,14 @@ class AnimeGenerator:
                     print(f"✗ 角色 '{char_name}' 立绘生成失败")
             
             print(f"\n角色设计完成，共生成 {len(character_portraits)} 个角色")
+            if progress_callback:
+                progress_callback(35, f'角色设计完成：共生成 {len(character_portraits)} 个角色')
             
             if use_storyboard and self.storyboard_gen:
                 print("\n=== 第三阶段：根据情节生成分镜脚本 ===")
+                if progress_callback:
+                    progress_callback(40, '正在生成分镜脚本...')
+                
                 storyboard_result = self.storyboard_gen.generate_storyboard_in_chunks(
                     novel_text, 
                     analyzed_characters
@@ -108,6 +123,8 @@ class AnimeGenerator:
                 
                 storyboard_panels = storyboard_result.get('storyboard', [])
                 print(f"分镜生成完成，共 {len(storyboard_panels)} 个分镜")
+                if progress_callback:
+                    progress_callback(50, f'分镜生成完成：共 {len(storyboard_panels)} 个分镜')
                 
                 print("\n=== 第四阶段：根据分镜生成画面 ===")
                 panels_to_process = storyboard_panels
@@ -117,6 +134,9 @@ class AnimeGenerator:
                 
                 for panel_idx, panel_info in enumerate(panels_to_process):
                     print(f"\n生成分镜 {panel_idx + 1}/{len(panels_to_process)}...")
+                    if progress_callback:
+                        scene_progress = 50 + int((panel_idx / len(panels_to_process)) * 45)
+                        progress_callback(scene_progress, f'正在生成分镜 {panel_idx + 1}/{len(panels_to_process)}...')
                     
                     scene_metadata = self.scene_composer.create_scene_from_storyboard(
                         scene_index=panel_idx,
@@ -135,6 +155,9 @@ class AnimeGenerator:
                 
                 for scene_idx, scene_info in enumerate(scenes_to_process):
                     print(f"\n生成场景 {scene_idx + 1}/{len(scenes_to_process)}...")
+                    if progress_callback:
+                        scene_progress = 50 + int((scene_idx / len(scenes_to_process)) * 45)
+                        progress_callback(scene_progress, f'正在生成场景 {scene_idx + 1}/{len(scenes_to_process)}...')
                     
                     scene_metadata = self.scene_composer.create_scene_with_ai_analysis(
                         scene_index=scene_idx,
