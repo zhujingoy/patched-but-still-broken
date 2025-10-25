@@ -7,21 +7,19 @@
     <link rel="stylesheet" href="/static/css/style.css">
 </head>
 <body>
+    <!-- User Info - Fixed aligned with main title -->
+    <div id="user-info" style="position: absolute; top: 60px; left: 20px; z-index: 1000; display: flex; align-items: center; gap: 8px;">
+        <span id="username-display" style="font-size: 13px; color: white; font-weight: 600; text-shadow: 1px 1px 2px rgba(0,0,0,0.5);"></span>
+        <button id="logout-btn" class="btn btn-primary" style="display: none; padding: 6px 12px; font-size: 13px;">退出登录</button>
+    </div>
+    
+    <!-- QR Code - Fixed aligned with main title -->
+    <div style="position: absolute; top: 45px; right: 20px; z-index: 1000; text-align: center; background-color: white; padding: 10px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+        <img src="/static/qrcode.png" alt="加群二维码" style="width: 100px; height: 100px; display: block;">
+        <p style="margin-top: 5px; font-size: 12px; color: #666; white-space: nowrap;">扫码加入社群</p>
+    </div>
+    
     <div class="container">
-        <!-- Top Right Section with User Info and QR Code -->
-        <div style="position: fixed; top: 20px; right: 20px; z-index: 1000; display: flex; align-items: center; gap: 10px; background-color: white; padding: 10px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
-            <!-- User Info -->
-            <div id="user-info" style="display: flex; align-items: center; gap: 8px;">
-                <span id="username-display" style="font-size: 13px;"></span>
-                <button id="logout-btn" class="btn btn-primary" style="display: none; padding: 6px 12px; font-size: 13px;">退出登录</button>
-            </div>
-            <!-- QR Code -->
-            <div style="text-align: center;">
-                <img src="/static/qrcode.png" alt="加群二维码" style="width: 100px; height: 100px; display: block;">
-                <p style="margin-top: 5px; font-size: 12px; color: #666; white-space: nowrap;">扫码加入社群</p>
-            </div>
-        </div>
-        
         <header>
             <h1>📚 小说动漫化系统</h1>
             <p class="subtitle">自动将小说转换为图配文+语音的动漫作品</p>
