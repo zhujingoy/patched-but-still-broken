@@ -33,7 +33,9 @@ class NovelAnalyzer:
       "shot_type": "镜头类型(特写/中景/远景/全景等)",
       "description": "画面描述(详细描述画面内容、角色动作、表情、场景环境)",
       "characters": ["出现的角色"],
-      "dialogue": "对话内容(如果有)",
+      "dialogues": [
+        {"character": "角色名", "text": "对话内容", "emotion": "情绪(开心/悲伤/愤怒等)"}
+      ],
       "narration": "旁白文本(如果有)",
       "emotion": "情绪氛围(如：紧张、欢快、悲伤等)"
     }
@@ -136,7 +138,7 @@ class NovelAnalyzer:
                 "shot_type": "中景",
                 "description": text[:500] if len(text) > 500 else text,
                 "characters": [],
-                "dialogue": "",
+                "dialogues": [],
                 "narration": text,
                 "emotion": "平静"
             }],

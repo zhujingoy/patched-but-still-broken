@@ -27,6 +27,7 @@ class StoryboardComposer:
         panel_description = storyboard_info.get('description', '')
         shot_type = storyboard_info.get('shot_type', '')
         characters_in_panel = storyboard_info.get('characters', [])
+        dialogues = storyboard_info.get('dialogues', [])
         dialogue = storyboard_info.get('dialogue', '')
         narration = storyboard_info.get('narration', '')
         emotion = storyboard_info.get('emotion', '')
@@ -58,7 +59,15 @@ class StoryboardComposer:
         if panel_image:
             output_image = os.path.join(panel_folder, "panel.png")
             
-            text_to_overlay = dialogue if dialogue else narration
+            text_to_overlay = ""
+            if dialogues:
+                dialogue_texts = [f"{d.get('character', '')}\uff1a{d.get('text', '')}" for d in dialogues]
+                text_to_overlay = "\n".join(dialogue_texts)
+            elif dialogue:
+                text_to_overlay = dialogue
+            elif narration:
+                text_to_overlay = narration
+            
             if text_to_overlay:
                 self.image_gen.create_text_overlay(
                     panel_image,
@@ -70,10 +79,12 @@ class StoryboardComposer:
                 shutil.copy(panel_image, output_image)
         
         audio_file = None
-        if narration:
-            audio_file = self.tts_gen.generate_speech_for_scene(narration, panel_index)
+        if dialogues:
+            audio_file = self.tts_gen.generate_dialogue_audio(dialogues, panel_index)
         elif dialogue:
             audio_file = self.tts_gen.generate_speech_for_scene(dialogue, panel_index)
+        elif narration:
+            audio_file = self.tts_gen.generate_speech_for_scene(narration, panel_index)
         
         output_audio = None
         if audio_file:
@@ -99,6 +110,7 @@ class StoryboardComposer:
             'shot_type': shot_type,
             'description': panel_description,
             'characters': characters_in_panel,
+            'dialogues': dialogues,
             'dialogue': dialogue,
             'narration': narration,
             'emotion': emotion,
@@ -121,6 +133,7 @@ class StoryboardComposer:
             'shot_type': metadata.get('shot_type'),
             'description': metadata.get('description'),
             'characters': metadata.get('characters'),
+            'dialogues': metadata.get('dialogues', []),
             'dialogue': metadata.get('dialogue'),
             'narration': metadata.get('narration'),
             'emotion': metadata.get('emotion'),
