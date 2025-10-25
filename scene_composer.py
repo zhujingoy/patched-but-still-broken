@@ -122,6 +122,74 @@ class SceneComposer:
         with open(metadata_path, 'w', encoding='utf-8') as f:
             json.dump(serializable_metadata, f, ensure_ascii=False, indent=2)
     
+    def create_scene_with_ai_analysis(self, scene_index: int, scene_text: str,
+                                      scene_description: str,
+                                      characters: List[str],
+                                      generate_video: bool = False) -> Dict:
+        scene_folder = os.path.join(self.output_dir, f"scene_{scene_index:04d}")
+        os.makedirs(scene_folder, exist_ok=True)
+        
+        for char_name in characters:
+            if not self.char_mgr.get_character(char_name):
+                self.char_mgr.register_character(char_name)
+        
+        character_prompts = [self.char_mgr.get_character_prompt(char) 
+                           for char in characters 
+                           if self.char_mgr.get_character(char)]
+        
+        scene_image = self.image_gen.generate_scene_image(
+            scene_description,
+            characters=character_prompts
+        )
+        
+        if scene_image:
+            output_image = os.path.join(scene_folder, "scene.png")
+            
+            self.image_gen.create_text_overlay(
+                scene_image,
+                scene_text,
+                output_image
+            )
+        else:
+            output_image = None
+        
+        audio_file = self.tts_gen.generate_speech_for_scene(scene_text, scene_index)
+        
+        if audio_file:
+            output_audio = os.path.join(scene_folder, "narration.mp3")
+            if audio_file != output_audio:
+                import shutil
+                shutil.copy(audio_file, output_audio)
+        else:
+            output_audio = None
+        
+        output_video = None
+        if generate_video and self.video_gen and scene_image:
+            video_file = self.video_gen.generate_video(
+                prompt=scene_description,
+                image_path=scene_image
+            )
+            if video_file:
+                output_video = os.path.join(scene_folder, "scene.mp4")
+                if video_file != output_video:
+                    import shutil
+                    shutil.copy(video_file, output_video)
+        
+        metadata = {
+            'scene_index': scene_index,
+            'text': scene_text,
+            'description': scene_description,
+            'characters': characters,
+            'image_path': output_image,
+            'audio_path': output_audio,
+            'video_path': output_video,
+            'folder': scene_folder
+        }
+        
+        self._save_metadata(scene_folder, metadata)
+        
+        return metadata
+    
     def create_scenes_from_paragraphs(self, paragraphs: List[str], 
                                      start_index: int = 0,
                                      generate_video: bool = False) -> List[Dict]:
