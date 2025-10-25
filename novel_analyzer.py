@@ -126,7 +126,7 @@ class NovelAnalyzer:
         if description:
             prompt_parts.append(description)
         elif narration:
-            prompt_parts.append(narration[:500])
+            prompt_parts.append(narration)
         
         if location:
             prompt_parts.append(f"地点：{location}")
@@ -144,7 +144,7 @@ class NovelAnalyzer:
         result = {
             "scenes": [{
                 "scene_number": 1,
-                "description": text[:200],
+                "description": text[:500] if len(text) > 500 else text,
                 "location": "",
                 "time": "",
                 "characters": [],
