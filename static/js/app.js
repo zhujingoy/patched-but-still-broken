@@ -8,6 +8,7 @@ let shotPlaybackInterval = null;
 
 document.addEventListener('DOMContentLoaded', function() {
     audioPlayer = document.getElementById('audio-player');
+    checkAuthentication();
     initializeEventListeners();
     restoreFileInfo();
 });
@@ -22,6 +23,9 @@ function initializeEventListeners() {
     const stopBtn = document.getElementById('stop-btn');
     const volumeSlider = document.getElementById('volume-slider');
     const returnHomeBtn = document.getElementById('return-home-btn');
+    const logoutBtn = document.getElementById('logout-btn');
+    const historyBtn = document.getElementById('history-btn');
+    const backToUploadBtn = document.getElementById('back-to-upload-btn');
 
     selectFileBtn.addEventListener('click', () => novelFile.click());
     
@@ -34,6 +38,18 @@ function initializeEventListeners() {
     volumeSlider.addEventListener('input', handleVolumeChange);
     if (returnHomeBtn) {
         returnHomeBtn.addEventListener('click', returnToHome);
+    }
+    if (logoutBtn) {
+        logoutBtn.addEventListener('click', handleLogout);
+    }
+    if (historyBtn) {
+        historyBtn.addEventListener('click', showHistory);
+    }
+    if (backToUploadBtn) {
+        backToUploadBtn.addEventListener('click', () => {
+            document.getElementById('history-section').style.display = 'none';
+            document.getElementById('upload-section').style.display = 'block';
+        });
     }
 
     audioPlayer.addEventListener('ended', handleAudioEnded);
@@ -118,6 +134,7 @@ async function handleStartGenerate() {
     try {
         const response = await fetch('/api/upload', {
             method: 'POST',
+            credentials: 'include',
             body: formData
         });
 
@@ -127,8 +144,13 @@ async function handleStartGenerate() {
             currentTaskId = data.task_id;
             pollStatus();
         } else {
-            alert('错误: ' + data.error);
-            resetUploadSection();
+            if (response.status === 401) {
+                alert('请先登录');
+                window.location.href = '/login';
+            } else {
+                alert('错误: ' + data.error);
+                resetUploadSection();
+            }
         }
     } catch (error) {
         alert('上传失败: ' + error.message);
@@ -140,7 +162,9 @@ async function pollStatus() {
     if (!currentTaskId) return;
 
     try {
-        const response = await fetch(`/api/status/${currentTaskId}`);
+        const response = await fetch(`/api/status/${currentTaskId}`, {
+            credentials: 'include'
+        });
         const data = await response.json();
 
         if (response.ok) {
@@ -171,7 +195,9 @@ function updateProgress(data) {
 
 async function loadScenes() {
     try {
-        const response = await fetch(`/api/scenes/${currentTaskId}`);
+        const response = await fetch(`/api/scenes/${currentTaskId}`, {
+            credentials: 'include'
+        });
         const data = await response.json();
 
         if (response.ok) {
@@ -360,23 +386,138 @@ function returnToHome() {
     if (confirm('确定要返回主页吗?当前播放将被停止。')) {
         stopPlayback();
         
-        // Clear file selection
         const fileInput = document.getElementById('novel-file');
         fileInput.value = '';
         document.getElementById('file-info').textContent = '';
         document.getElementById('start-generate-btn').disabled = true;
         
-        // Clear session storage
         sessionStorage.removeItem('selected_file_name');
         sessionStorage.removeItem('navigating_to_settings');
         
-        // Reset task and scenes
         currentTaskId = null;
         scenes = [];
         currentSceneIndex = 0;
         
-        // Show upload section, hide player section
         document.getElementById('player-section').classList.add('hidden');
         document.getElementById('upload-section').classList.remove('hidden');
+    }
+}
+
+async function checkAuthentication() {
+    try {
+        const response = await fetch('/api/current_user', {
+            credentials: 'include'
+        });
+        const data = await response.json();
+        
+        if (data.user) {
+            document.getElementById('username-display').textContent = `欢迎，${data.user.username}`;
+            document.getElementById('logout-btn').style.display = 'inline-block';
+        } else {
+            window.location.href = '/login';
+        }
+    } catch (error) {
+        console.error('验证失败:', error);
+        window.location.href = '/login';
+    }
+}
+
+async function handleLogout() {
+    try {
+        const response = await fetch('/api/logout', {
+            method: 'POST',
+            credentials: 'include'
+        });
+        
+        if (response.ok) {
+            window.location.href = '/login';
+        }
+    } catch (error) {
+        console.error('退出失败:', error);
+    }
+}
+
+async function showHistory() {
+    try {
+        const response = await fetch('/api/history', {
+            credentials: 'include'
+        });
+        const data = await response.json();
+        
+        if (response.ok) {
+            displayHistory(data.history);
+            document.getElementById('upload-section').style.display = 'none';
+            document.getElementById('history-section').style.display = 'block';
+        } else {
+            alert('获取历史失败: ' + data.error);
+        }
+    } catch (error) {
+        alert('获取历史失败: ' + error.message);
+    }
+}
+
+function displayHistory(history) {
+    const historyList = document.getElementById('history-list');
+    
+    if (!history || history.length === 0) {
+        historyList.innerHTML = '<p>还没有上传记录</p>';
+        return;
+    }
+    
+    let html = '<table style="width: 100%; border-collapse: collapse;">';
+    html += '<thead><tr style="background: #f0f0f0;">';
+    html += '<th style="padding: 10px; border: 1px solid #ddd;">文件名</th>';
+    html += '<th style="padding: 10px; border: 1px solid #ddd;">上传时间</th>';
+    html += '<th style="padding: 10px; border: 1px solid #ddd;">操作</th>';
+    html += '</tr></thead><tbody>';
+    
+    history.forEach(record => {
+        const uploadTime = record.created_at ? new Date(record.created_at.replace(' ', 'T')).toLocaleString('zh-CN', {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit'
+        }) : '-';
+        
+        html += '<tr>';
+        html += `<td style="padding: 10px; border: 1px solid #ddd;">${record.filename || '-'}</td>`;
+        html += `<td style="padding: 10px; border: 1px solid #ddd;">${uploadTime}</td>`;
+        html += `<td style="padding: 10px; border: 1px solid #ddd;">`;
+        if (record.session_id && record.generated_scene_count > 0) {
+            html += `<a href="#" onclick="loadPlayback('${record.session_id}'); return false;" style="color: #007bff; text-decoration: none;">查看作品</a>`;
+        } else {
+            html += '<span style="color: #999;">生成中</span>';
+        }
+        html += `</td>`;
+        html += '</tr>';
+    });
+    
+    html += '</tbody></table>';
+    historyList.innerHTML = html;
+}
+
+async function loadPlayback(sessionId) {
+    try {
+        const response = await fetch(`/api/scenes/${sessionId}`, {
+            credentials: 'include'
+        });
+        const data = await response.json();
+
+        if (response.ok) {
+            scenes = data.scenes;
+            currentSceneIndex = 0;
+            currentTaskId = sessionId;
+
+            document.getElementById('history-section').style.display = 'none';
+            document.getElementById('player-section').classList.remove('hidden');
+
+            displayScene(0);
+        } else {
+            alert('加载作品失败: ' + data.error);
+        }
+    } catch (error) {
+        alert('加载作品失败: ' + error.message);
     }
 }
