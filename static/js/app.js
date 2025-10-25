@@ -1,8 +1,10 @@
 let currentTaskId = null;
 let scenes = [];
 let currentSceneIndex = 0;
+let currentShotIndex = 0;
 let isPlaying = false;
 let audioPlayer = null;
+let shotPlaybackInterval = null;
 
 document.addEventListener('DOMContentLoaded', function() {
     audioPlayer = document.getElementById('audio-player');
@@ -192,6 +194,7 @@ function displayScene(index) {
     if (index < 0 || index >= scenes.length) return;
 
     currentSceneIndex = index;
+    currentShotIndex = 0;
     const scene = scenes[index];
 
     const sceneImage = document.getElementById('scene-image');
@@ -206,7 +209,13 @@ function displayScene(index) {
             const imageWrapper = document.querySelector('.scene-image-wrapper');
             imageWrapper.innerHTML = '<img id="scene-image" src="" alt="场景图片">';
         }
-        sceneImage.src = scene.image_url;
+        
+        if (scene.shot_urls && scene.shot_urls.length > 0) {
+            sceneImage.src = scene.shot_urls[0].url;
+            displayShotInfo(scene.shot_urls[0]);
+        } else {
+            sceneImage.src = scene.image_url;
+        }
     }
     
     sceneText.textContent = scene.text;
@@ -227,6 +236,57 @@ function displayScene(index) {
     }, 10);
 }
 
+function displayShotInfo(shot) {
+    const shotInfoDiv = document.getElementById('shot-info');
+    if (!shotInfoDiv) {
+        const sceneCard = document.getElementById('scene-card');
+        const newDiv = document.createElement('div');
+        newDiv.id = 'shot-info';
+        newDiv.style.cssText = 'margin-top: 10px; padding: 8px; background-color: rgba(0,0,0,0.1); border-radius: 5px; font-size: 14px;';
+        sceneCard.appendChild(newDiv);
+    }
+    
+    const infoDiv = document.getElementById('shot-info');
+    if (shot && shot.shot_type) {
+        let info = `镜头: ${shot.shot_type}`;
+        if (shot.speaking_character && shot.dialogue) {
+            info += ` | ${shot.speaking_character}: ${shot.dialogue}`;
+        }
+        if (shot.emotion) {
+            info += ` (${shot.emotion})`;
+        }
+        infoDiv.textContent = info;
+        infoDiv.style.display = 'block';
+    } else {
+        infoDiv.style.display = 'none';
+    }
+}
+
+function startShotPlayback() {
+    const scene = scenes[currentSceneIndex];
+    if (!scene.shot_urls || scene.shot_urls.length <= 1) {
+        return;
+    }
+    
+    if (shotPlaybackInterval) {
+        clearInterval(shotPlaybackInterval);
+    }
+    
+    shotPlaybackInterval = setInterval(() => {
+        currentShotIndex = (currentShotIndex + 1) % scene.shot_urls.length;
+        const sceneImage = document.getElementById('scene-image');
+        sceneImage.src = scene.shot_urls[currentShotIndex].url;
+        displayShotInfo(scene.shot_urls[currentShotIndex]);
+    }, 3000);
+}
+
+function stopShotPlayback() {
+    if (shotPlaybackInterval) {
+        clearInterval(shotPlaybackInterval);
+        shotPlaybackInterval = null;
+    }
+}
+
 function togglePlayPause() {
     if (isPlaying) {
         pausePlayback();
@@ -239,16 +299,20 @@ function startPlayback() {
     isPlaying = true;
     document.getElementById('play-pause-btn').textContent = '⏸ 暂停';
     
+    startShotPlayback();
+    
     audioPlayer.play().catch(error => {
         console.error('播放失败:', error);
         isPlaying = false;
         document.getElementById('play-pause-btn').textContent = '▶️ 播放';
+        stopShotPlayback();
     });
 }
 
 function pausePlayback() {
     isPlaying = false;
     audioPlayer.pause();
+    stopShotPlayback();
     document.getElementById('play-pause-btn').textContent = '▶️ 播放';
 }
 
@@ -256,6 +320,7 @@ function stopPlayback() {
     isPlaying = false;
     audioPlayer.pause();
     audioPlayer.currentTime = 0;
+    stopShotPlayback();
     document.getElementById('play-pause-btn').textContent = '▶️ 播放';
 }
 
@@ -264,6 +329,7 @@ function navigateScene(direction) {
     
     if (newIndex >= 0 && newIndex < scenes.length) {
         stopPlayback();
+        stopShotPlayback();
         displayScene(newIndex);
     }
 }
