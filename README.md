@@ -41,6 +41,21 @@ python web_app.py
 
 然后在浏览器中打开 `http://localhost:5000`
 
+### 📱 Android 应用
+
+现在支持 Android 应用！查看 [android/README.md](android/README.md) 了解详细信息。
+
+**快速开始：**
+
+1. 启动 Flask 服务器（绑定到所有网络接口）：
+   ```bash
+   python web_app.py --host 0.0.0.0 --port 5000
+   ```
+
+2. 使用 Android Studio 打开 `android` 目录并运行应用
+
+详细的构建和配置说明请查看 Android 应用的 README。
+
 Web 界面功能：
 - 📤 上传小说文件
 - ⚙️ 配置 API Key 和场景数量
