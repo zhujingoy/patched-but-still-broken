@@ -5,9 +5,13 @@
 ## 功能特点
 
 - ✨ 自动解析小说章节和段落
+- 🤖 **AI 智能分析**：使用 DeepSeek AI 深度分析小说，提取场景、角色、对话和叙述
 - 👥 智能提取小说角色并保持角色一致性
-- 🎨 使用 AI 生成场景图片（DALL-E 3）
+- 🎭 **角色立绘生成**：为每个主要角色生成稳定的外观设定和立绘
+- 🎬 **多镜头分镜**：对每一幕剧情生成 3-5 个不同角度的场景图片（特写、中景、全景等）
+- 🎨 使用 AI 生成场景图片（支持七牛 Gemini 和 OpenAI DALL-E 3）
 - 🗣️ 自动生成中文语音配音（Google TTS）
+- 🎥 **视频生成**：支持将场景图片转换为视频（可选）
 - 📝 图文结合，文字叠加在图片上
 - 💾 自动缓存已生成的图片和音频
 
@@ -80,7 +84,7 @@ python anime_generator.py 你的小说.txt --api-key sk-xxxxx
 
 ## 输出结构
 
-生成的动漫内容保存在以下目录结构中：
+### 传统模式输出
 
 ```
 output_scenes/
@@ -94,7 +98,29 @@ anime_output/
   project_metadata.json  # 整个项目的元数据
 ```
 
+### AI 分镜模式输出
+
+```
+output_scenes/
+  scene_0000/
+    shot_00.png     # 第一个分镜镜头（例如：特写）
+    shot_01.png     # 第二个分镜镜头（例如：中景）
+    shot_02.png     # 第三个分镜镜头（例如：全景）
+    shot_03.png     # 第四个分镜镜头（例如：过肩镜头）
+    narration.mp3   # 语音配音
+    metadata.json   # 场景元数据（包含所有镜头信息）
+  scene_0001/
+    ...
+image_cache/
+  char_*.png        # 角色立绘缓存
+  shot_*.png        # 分镜图片缓存
+anime_output/
+  project_metadata.json  # 整个项目的元数据
+```
+
 ## 工作原理
+
+### 传统模式
 
 1. **小说解析**：使用正则表达式解析章节和段落
 2. **角色提取**：基于词频分析提取主要角色（出现3次以上）
@@ -102,17 +128,46 @@ anime_output/
 4. **场景生成**：
    - 为每个段落生成对应的场景图片
    - 识别段落中出现的角色
-   - 使用 DALL-E 3 生成场景图片
+   - 使用图像生成 API 生成场景图片
    - 将文字叠加到图片上
    - 使用 gTTS 生成语音配音
 
+### AI 智能分析模式（推荐）
+
+1. **🤖 AI 文本分析**：
+   - 使用七牛 DeepSeek AI 模型深度分析小说文本
+   - 提取结构化信息：
+     - **场景 (Scenes)**：场景描述、地点、时间
+     - **人物 (Characters)**：角色名称、外貌、性格特征
+     - **对话 (Dialogues)**：角色对话内容
+     - **叙述 (Narration)**：旁白和描述性文本
+     - **分镜脚本 (Storyboard)**：为每个场景生成 3-5 个不同镜头描述
+   - 支持大文本自动分块处理
+
+2. **🎭 角色立绘生成**：
+   - 根据 AI 分析的角色信息生成稳定的外观设定
+   - 为每个主要角色生成「角色立绘」
+   - 使用 AI 生成的外貌和性格描述创建一致的角色形象
+
+3. **🎬 多镜头场景生成**：
+   - 使用 AI 提取的分镜脚本生成多个场景图片
+   - 每个场景包含不同视角：
+     - 特写镜头（Close-up）
+     - 中景镜头（Medium Shot）
+     - 全景镜头（Wide Shot）
+     - 过肩镜头（Over-the-shoulder）
+   - 结合角色立绘信息，确保场景中角色准确呈现
+   - 生成的多张图片可作为分镜素材
+
 ## 核心模块
 
-- `novel_parser.py` - 小说解析器
+- `novel_parser.py` - 小说解析器（传统模式）
+- `novel_analyzer.py` - **AI 小说分析器（使用 DeepSeek AI）**
 - `character_manager.py` - 角色管理器
-- `image_generator.py` - 图片生成器（基于 OpenAI DALL-E 3）
+- `image_generator.py` - 图片生成器（支持七牛 Gemini 和 OpenAI DALL-E 3）
 - `tts_generator.py` - 语音生成器（基于 Google TTS）
-- `scene_composer.py` - 场景组合器
+- `video_generator.py` - 视频生成器（可选）
+- `scene_composer.py` - 场景组合器（支持多镜头分镜生成）
 - `anime_generator.py` - 主程序和命令行接口
 - `web_app.py` - Flask Web 服务器
 - `templates/` - HTML 模板文件
