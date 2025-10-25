@@ -57,7 +57,7 @@ class NovelAnalyzer:
                     {"role": "user", "content": f"请分析以下小说文本：\n\n{text}"}
                 ],
                 temperature=0.7,
-                max_tokens=4000
+                max_tokens=8000
             )
             
             result_text = response.choices[0].message.content
