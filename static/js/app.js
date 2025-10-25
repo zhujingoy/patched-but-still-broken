@@ -354,13 +354,14 @@ function navigateScene(direction) {
 }
 
 function handleAudioEnded() {
-    if (isPlaying && currentSceneIndex < scenes.length - 1) {
+    if (currentSceneIndex < scenes.length - 1) {
         navigateScene(1);
         setTimeout(() => {
             startPlayback();
         }, 500);
     } else {
-        pausePlayback();
+        isPlaying = false;
+        document.getElementById('play-pause-btn').textContent = '▶️ 播放';
     }
 }
 
