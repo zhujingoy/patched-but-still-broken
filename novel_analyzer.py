@@ -9,7 +9,7 @@ class NovelAnalyzer:
             api_key=api_key,
             base_url="https://openai.qiniu.com/v1"
         )
-        self.model = "deepseek-chat"
+        self.model = "deepseek/deepseek-v3.1-terminus"
     
     def analyze_novel_text(self, text: str) -> Dict:
         system_prompt = """你是一个专业的小说分析助手。请分析输入的小说文本，提取以下信息：
