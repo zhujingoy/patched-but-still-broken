@@ -48,16 +48,17 @@ class AnimeGenerator:
         scene_index = 0
         
         if self.use_ai_analysis and self.novel_analyzer:
-            print("=== 第一阶段：使用 DeepSeek AI 分析小说文本 ===")
+            print("=== 使用七牛 AI API 直接处理小说文本 ===")
+            print("第一阶段：AI 深度分析小说内容")
             
             analysis_result = self.novel_analyzer.analyze_novel_in_chunks(novel_text, max_chunks=None)
             
             analyzed_scenes = analysis_result.get('scenes', [])
             analyzed_characters = analysis_result.get('characters', [])
             
-            print(f"AI分析完成，识别到 {len(analyzed_scenes)} 个场景，{len(analyzed_characters)} 个角色")
+            print(f"✓ AI分析完成，识别到 {len(analyzed_scenes)} 个场景，{len(analyzed_characters)} 个角色")
             
-            print("\n=== 第二阶段：为每个角色生成稳定的外观和角色立绘 ===")
+            print("\n第二阶段：为每个角色生成稳定的外观和角色立绘")
             character_portraits = {}
             
             for char_info in analyzed_characters[:10]:
@@ -73,7 +74,7 @@ class AnimeGenerator:
                     }
                 )
                 
-                print(f"生成角色 '{char_name}' 的立绘...")
+                print(f"  生成角色 '{char_name}' 的立绘...")
                 appearance_prompt = self.novel_analyzer.generate_character_appearance_prompt(char_info)
                 
                 portrait_path = self.image_gen.generate_character_image(
@@ -84,20 +85,20 @@ class AnimeGenerator:
                 
                 if portrait_path:
                     character_portraits[char_name] = portrait_path
-                    print(f"✓ 角色 '{char_name}' 立绘生成完成")
+                    print(f"  ✓ 角色 '{char_name}' 立绘生成完成")
                 else:
-                    print(f"✗ 角色 '{char_name}' 立绘生成失败")
+                    print(f"  ✗ 角色 '{char_name}' 立绘生成失败")
             
-            print(f"\n角色立绘生成完成，共生成 {len(character_portraits)} 个角色立绘")
+            print(f"✓ 角色立绘生成完成，共生成 {len(character_portraits)} 个角色立绘")
             
-            print("\n=== 第三阶段：根据剧情生成对应的画面 ===")
+            print("\n第三阶段：根据剧情生成对应的画面")
             scenes_to_process = analyzed_scenes
             
             if max_scenes:
                 scenes_to_process = analyzed_scenes[:max_scenes]
             
             for scene_idx, scene_info in enumerate(scenes_to_process):
-                print(f"\n生成场景 {scene_idx + 1}/{len(scenes_to_process)}...")
+                print(f"  处理场景 {scene_idx + 1}/{len(scenes_to_process)}...")
                 
                 scene_metadata = self.scene_composer.create_scene_with_ai_analysis(
                     scene_index=scene_idx,
@@ -106,7 +107,10 @@ class AnimeGenerator:
                 )
                 
                 all_scenes.append(scene_metadata)
+            
+            print(f"\n✓ 全部场景生成完成！")
         else:
+            print("=== 使用传统方式处理小说 ===")
             parser = NovelParser(novel_text)
             chapters = parser.parse()
             
