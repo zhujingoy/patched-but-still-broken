@@ -55,14 +55,31 @@ def insert_statistics(session_id, client_address, upload_file_count, upload_text
         conn.commit()
         return cursor.lastrowid
 
-def update_generation_stats(session_id, generated_scene_count, generated_content_size):
+def update_generation_stats(session_id, generated_scene_count, generated_content_size, metadata=None):
     with get_db_connection() as conn:
         cursor = conn.cursor()
-        cursor.execute('''
-            UPDATE generation_statistics 
-            SET generated_scene_count = ?, generated_content_size = ?
-            WHERE session_id = ?
-        ''', (generated_scene_count, generated_content_size, session_id))
+        
+        cursor.execute("PRAGMA table_info(generation_statistics)")
+        columns = [column[1] for column in cursor.fetchall()]
+        
+        if 'metadata' not in columns:
+            cursor.execute('ALTER TABLE generation_statistics ADD COLUMN metadata TEXT')
+            conn.commit()
+        
+        if metadata:
+            import json
+            metadata_json = json.dumps(metadata, ensure_ascii=False)
+            cursor.execute('''
+                UPDATE generation_statistics 
+                SET generated_scene_count = ?, generated_content_size = ?, metadata = ?
+                WHERE session_id = ?
+            ''', (generated_scene_count, generated_content_size, metadata_json, session_id))
+        else:
+            cursor.execute('''
+                UPDATE generation_statistics 
+                SET generated_scene_count = ?, generated_content_size = ?
+                WHERE session_id = ?
+            ''', (generated_scene_count, generated_content_size, session_id))
         conn.commit()
 
 def get_statistics(session_id=None, username=None, limit=None):

@@ -59,7 +59,7 @@ def generate_anime_async(task_id, novel_path, max_scenes, api_key, provider='qin
                         file_path = os.path.join(root, file)
                         generated_content_size += os.path.getsize(file_path)
         
-        update_generation_stats(task_id, generated_scene_count, generated_content_size)
+        update_generation_stats(task_id, generated_scene_count, generated_content_size, metadata)
         
         generation_status[task_id] = {
             'status': 'completed',
@@ -212,14 +212,23 @@ def get_status(task_id):
 
 @app.route('/api/scenes/<task_id>', methods=['GET'])
 def get_scenes(task_id):
-    if task_id not in generation_status:
-        return jsonify({'error': '任务不存在'}), 404
+    metadata = None
     
-    status = generation_status[task_id]
-    if status['status'] != 'completed':
-        return jsonify({'error': '任务未完成'}), 400
+    if task_id in generation_status:
+        status = generation_status[task_id]
+        if status['status'] != 'completed':
+            return jsonify({'error': '任务未完成'}), 400
+        metadata = status.get('metadata', {})
+    else:
+        db_record = get_statistics(session_id=task_id)
+        if not db_record:
+            return jsonify({'error': '任务不存在'}), 404
+        
+        if not db_record.get('metadata'):
+            return jsonify({'error': '任务未完成或元数据不存在'}), 400
+        
+        metadata = json.loads(db_record['metadata'])
     
-    metadata = status.get('metadata', {})
     scenes = []
     
     for scene_info in metadata.get('scenes', []):
