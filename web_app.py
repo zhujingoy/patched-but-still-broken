@@ -233,24 +233,41 @@ def get_scenes(task_id):
         metadata = json.loads(db_record['metadata'])
     
     scenes = []
+    mode = metadata.get('mode', 'scene')
     
-    for scene_info in metadata.get('scenes', []):
-        scene_folder = scene_info['folder']
-        metadata_path = os.path.join(scene_folder, 'metadata.json')
-        
-        if os.path.exists(metadata_path):
-            with open(metadata_path, 'r', encoding='utf-8') as f:
-                scene_data = json.load(f)
-                
-                scene_data['image_url'] = f"/api/file/{scene_folder}/scene.png"
-                scene_data['audio_url'] = f"/api/file/{scene_folder}/narration.mp3"
-                if scene_data.get('video_path'):
-                    scene_data['video_url'] = f"/api/file/{scene_folder}/scene.mp4"
-                scenes.append(scene_data)
+    if mode == 'storyboard':
+        for shot_info in metadata.get('shots', []):
+            shot_folder = shot_info['folder']
+            metadata_path = os.path.join(shot_folder, 'metadata.json')
+            
+            if os.path.exists(metadata_path):
+                with open(metadata_path, 'r', encoding='utf-8') as f:
+                    shot_data = json.load(f)
+                    
+                    shot_data['image_url'] = f"/api/file/{shot_folder}/shot.png"
+                    shot_data['audio_url'] = f"/api/file/{shot_folder}/audio.mp3"
+                    if shot_data.get('video_path'):
+                        shot_data['video_url'] = f"/api/file/{shot_folder}/shot.mp4"
+                    scenes.append(shot_data)
+    else:
+        for scene_info in metadata.get('scenes', []):
+            scene_folder = scene_info['folder']
+            metadata_path = os.path.join(scene_folder, 'metadata.json')
+            
+            if os.path.exists(metadata_path):
+                with open(metadata_path, 'r', encoding='utf-8') as f:
+                    scene_data = json.load(f)
+                    
+                    scene_data['image_url'] = f"/api/file/{scene_folder}/scene.png"
+                    scene_data['audio_url'] = f"/api/file/{scene_folder}/narration.mp3"
+                    if scene_data.get('video_path'):
+                        scene_data['video_url'] = f"/api/file/{scene_folder}/scene.mp4"
+                    scenes.append(scene_data)
     
     return jsonify({
         'total_scenes': len(scenes),
-        'scenes': scenes
+        'scenes': scenes,
+        'mode': mode
     })
 
 @app.route('/api/file/<path:filepath>')
