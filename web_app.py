@@ -145,63 +145,61 @@ def get_history():
 @app.route('/api/upload', methods=['POST'])
 @login_required
 def upload_novel():
-    if 'novel' not in request.files:
-        return jsonify({'error': '没有上传文件'}), 400
+    data = request.get_json()
     
-    file = request.files['novel']
-    if file.filename == '':
-        return jsonify({'error': '没有选择文件'}), 400
+    if not data or 'novel_text' not in data:
+        return jsonify({'error': '没有提供小说内容'}), 400
     
-    if file and allowed_file(file.filename):
-        filename = secure_filename(file.filename)
-        task_id = str(uuid.uuid4())
-        file_path = os.path.join(app.config['UPLOAD_FOLDER'], f"{task_id}_{filename}")
-        file.save(file_path)
-        
-        client_address = request.remote_addr
-        upload_file_count = 1
-        upload_content_size = os.path.getsize(file_path)
-        
-        with open(file_path, 'r', encoding='utf-8') as f:
-            content = f.read()
-            upload_text_chars = len(content)
-        
-        username = session.get('username')
-        insert_statistics(
-            session_id=task_id,
-            client_address=client_address,
-            upload_file_count=upload_file_count,
-            upload_text_chars=upload_text_chars,
-            upload_content_size=upload_content_size,
-            username=username,
-            filename=filename
-        )
-        
-        max_scenes = request.form.get('max_scenes', type=int)
-        api_key = request.form.get('api_key', '')
-        provider = request.form.get('api_provider', 'qiniu')
-        custom_prompt = request.form.get('custom_prompt', '')
-        enable_video = request.form.get('enable_video', 'false').lower() == 'true'
-        use_ai_analysis = request.form.get('use_ai_analysis', 'true').lower() == 'true'
-        
-        if not api_key:
-            api_key = os.getenv('OPENAI_API_KEY')
-        
-        if not api_key:
-            return jsonify({'error': '需要提供 API Key'}), 400
-        
-        thread = threading.Thread(
-            target=generate_anime_async,
-            args=(task_id, file_path, max_scenes, api_key, provider, custom_prompt, enable_video, use_ai_analysis)
-        )
-        thread.start()
-        
-        return jsonify({
-            'task_id': task_id,
-            'message': '开始处理小说'
-        })
+    novel_text = data.get('novel_text', '').strip()
+    if not novel_text:
+        return jsonify({'error': '小说内容不能为空'}), 400
     
-    return jsonify({'error': '不支持的文件类型'}), 400
+    task_id = str(uuid.uuid4())
+    filename = f"{task_id}_novel.txt"
+    file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+    
+    with open(file_path, 'w', encoding='utf-8') as f:
+        f.write(novel_text)
+    
+    client_address = request.remote_addr
+    upload_file_count = 1
+    upload_content_size = len(novel_text.encode('utf-8'))
+    upload_text_chars = len(novel_text)
+    
+    username = session.get('username')
+    insert_statistics(
+        session_id=task_id,
+        client_address=client_address,
+        upload_file_count=upload_file_count,
+        upload_text_chars=upload_text_chars,
+        upload_content_size=upload_content_size,
+        username=username,
+        filename=filename
+    )
+    
+    max_scenes = data.get('max_scenes', type=int)
+    api_key = data.get('api_key', '')
+    provider = data.get('api_provider', 'qiniu')
+    custom_prompt = data.get('custom_prompt', '')
+    enable_video = data.get('enable_video', 'false').lower() == 'true'
+    use_ai_analysis = data.get('use_ai_analysis', 'true').lower() == 'true'
+    
+    if not api_key:
+        api_key = os.getenv('OPENAI_API_KEY')
+    
+    if not api_key:
+        return jsonify({'error': '需要提供 API Key'}), 400
+    
+    thread = threading.Thread(
+        target=generate_anime_async,
+        args=(task_id, file_path, max_scenes, api_key, provider, custom_prompt, enable_video, use_ai_analysis)
+    )
+    thread.start()
+    
+    return jsonify({
+        'task_id': task_id,
+        'message': '开始处理小说'
+    })
 
 @app.route('/api/status/<task_id>', methods=['GET'])
 def get_status(task_id):

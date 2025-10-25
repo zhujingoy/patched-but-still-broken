@@ -39,11 +39,10 @@
         </section>
 
         <section id="upload-section" class="section">
-            <h2>上传小说</h2>
+            <h2>输入小说内容</h2>
             <div class="upload-area">
-                <input type="file" id="novel-file" accept=".txt" style="display: none;">
-                <button id="select-file-btn" class="btn btn-primary">选择小说文件 (.txt)</button>
-                <div id="file-info" class="file-info"></div>
+                <textarea id="novel-text" rows="10" placeholder="请在此处粘贴或输入小说内容..." style="width: 100%; padding: 12px; border: 2px solid #ddd; border-radius: 8px; font-size: 1em; font-family: inherit; resize: vertical;"></textarea>
+                <div id="text-info" class="file-info"></div>
             </div>
             
             <div class="settings">

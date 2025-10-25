@@ -12,8 +12,7 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 function initializeEventListeners() {
-    const selectFileBtn = document.getElementById('select-file-btn');
-    const novelFile = document.getElementById('novel-file');
+    const novelText = document.getElementById('novel-text');
     const startGenerateBtn = document.getElementById('start-generate-btn');
     const playPauseBtn = document.getElementById('play-pause-btn');
     const prevBtn = document.getElementById('prev-btn');
@@ -24,10 +23,8 @@ function initializeEventListeners() {
     const logoutBtn = document.getElementById('logout-btn');
     const historyBtn = document.getElementById('history-btn');
     const backToUploadBtn = document.getElementById('back-to-upload-btn');
-
-    selectFileBtn.addEventListener('click', () => novelFile.click());
     
-    novelFile.addEventListener('change', handleFileSelect);
+    novelText.addEventListener('input', handleTextInput);
     startGenerateBtn.addEventListener('click', handleStartGenerate);
     playPauseBtn.addEventListener('click', togglePlayPause);
     prevBtn.addEventListener('click', () => navigateScene(-1));
@@ -52,57 +49,37 @@ function initializeEventListeners() {
 
     audioPlayer.addEventListener('ended', handleAudioEnded);
 
-    // Mark navigation to settings to preserve file state
-    const settingsLink = document.querySelector('a[href="/settings"]');
-    if (settingsLink) {
-        settingsLink.addEventListener('click', () => {
-            sessionStorage.setItem('navigating_to_settings', 'true');
-        });
-    }
 }
 
-function handleFileSelect(event) {
-    const file = event.target.files[0];
-    if (file) {
-        const fileInfo = document.getElementById('file-info');
-        fileInfo.textContent = `已选择: ${file.name}`;
-        fileInfo.style.color = '';
+function handleTextInput(event) {
+    const text = event.target.value.trim();
+    const textInfo = document.getElementById('text-info');
+    if (text.length > 0) {
+        textInfo.textContent = `已输入 ${text.length} 字`;
+        textInfo.style.color = '';
         document.getElementById('start-generate-btn').disabled = false;
-        // Save file name to sessionStorage for navigation to settings
-        sessionStorage.setItem('selected_file_name', file.name);
+    } else {
+        textInfo.textContent = '';
+        document.getElementById('start-generate-btn').disabled = true;
     }
 }
 
 function restoreFileInfo() {
-    // Only restore if coming back from settings page
-    const fromSettings = sessionStorage.getItem('navigating_to_settings') === 'true';
-    
-    if (fromSettings) {
-        const fileName = sessionStorage.getItem('selected_file_name');
-        if (fileName) {
-            document.getElementById('file-info').textContent = `之前选择: ${fileName} (请重新选择文件)`;
-            document.getElementById('file-info').style.color = '#ff9800';
-        }
-        // Clear the navigation flag
-        sessionStorage.removeItem('navigating_to_settings');
-    } else {
-        // Clear file info if not from settings (page reload or new visit)
-        sessionStorage.removeItem('selected_file_name');
-        document.getElementById('file-info').textContent = '';
+    const novelText = document.getElementById('novel-text');
+    if (!novelText.value.trim()) {
         document.getElementById('start-generate-btn').disabled = true;
     }
-    // Button stays disabled until user selects a file again
 }
 
 async function handleStartGenerate() {
-    const fileInput = document.getElementById('novel-file');
+    const novelText = document.getElementById('novel-text');
     const apiKey = localStorage.getItem('api_key');
     const apiProvider = localStorage.getItem('api_provider') || 'qiniu';
     const maxScenes = document.getElementById('max-scenes').value;
     const customPrompt = document.getElementById('custom-prompt').value;
 
-    if (!fileInput.files[0]) {
-        alert('请先选择小说文件');
+    if (!novelText.value.trim()) {
+        alert('请先输入小说内容');
         return;
     }
 
@@ -114,16 +91,17 @@ async function handleStartGenerate() {
 
     const enableVideo = document.getElementById('enable-video').checked;
     
-    const formData = new FormData();
-    formData.append('novel', fileInput.files[0]);
-    formData.append('api_key', apiKey);
-    formData.append('api_provider', apiProvider);
-    formData.append('enable_video', enableVideo ? 'true' : 'false');
+    const requestData = {
+        novel_text: novelText.value,
+        api_key: apiKey,
+        api_provider: apiProvider,
+        enable_video: enableVideo ? 'true' : 'false'
+    };
     if (maxScenes) {
-        formData.append('max_scenes', maxScenes);
+        requestData.max_scenes = maxScenes;
     }
     if (customPrompt) {
-        formData.append('custom_prompt', customPrompt);
+        requestData.custom_prompt = customPrompt;
     }
 
     document.getElementById('upload-section').classList.add('hidden');
@@ -133,7 +111,10 @@ async function handleStartGenerate() {
         const response = await fetch('/api/upload', {
             method: 'POST',
             credentials: 'include',
-            body: formData
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(requestData)
         });
 
         const data = await response.json();
@@ -322,13 +303,10 @@ function returnToHome() {
     if (confirm('确定要返回主页吗?当前播放将被停止。')) {
         stopPlayback();
         
-        const fileInput = document.getElementById('novel-file');
-        fileInput.value = '';
-        document.getElementById('file-info').textContent = '';
+        const novelText = document.getElementById('novel-text');
+        novelText.value = '';
+        document.getElementById('text-info').textContent = '';
         document.getElementById('start-generate-btn').disabled = true;
-        
-        sessionStorage.removeItem('selected_file_name');
-        sessionStorage.removeItem('navigating_to_settings');
         
         currentTaskId = null;
         scenes = [];
