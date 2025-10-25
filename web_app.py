@@ -8,7 +8,7 @@ import threading
 import uuid
 import jieba
 from statistics_db import insert_statistics, update_generation_stats, get_statistics
-from user_auth import register_user, login_user, get_user_by_id
+from user_auth import register_user, login_user, get_user_by_id, get_user_video_count, increment_user_video_count
 from functools import wraps
 
 app = Flask(__name__, static_folder='static', template_folder='templates')
@@ -28,7 +28,7 @@ generation_status = {}
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
-def generate_anime_async(task_id, novel_path, max_scenes, api_key, provider='qiniu', custom_prompt=None, enable_video=False, use_ai_analysis=True):
+def generate_anime_async(task_id, novel_path, max_scenes, api_key, provider='qiniu', custom_prompt=None, enable_video=False, use_ai_analysis=True, user_id=None):
     try:
         generation_status[task_id] = {
             'status': 'processing',
@@ -60,6 +60,9 @@ def generate_anime_async(task_id, novel_path, max_scenes, api_key, provider='qin
                         generated_content_size += os.path.getsize(file_path)
         
         update_generation_stats(task_id, generated_scene_count, generated_content_size, metadata)
+        
+        if user_id:
+            increment_user_video_count(user_id)
         
         generation_status[task_id] = {
             'status': 'completed',
@@ -142,6 +145,31 @@ def get_history():
     history = get_statistics(username=username, limit=10)
     return jsonify({'history': history}), 200
 
+@app.route('/api/check_payment', methods=['POST'])
+@login_required
+def check_payment():
+    user_id = session.get('user_id')
+    video_count = get_user_video_count(user_id)
+    
+    if video_count < 3:
+        return jsonify({
+            'requires_payment': False,
+            'video_count': video_count,
+            'remaining_free': 3 - video_count
+        }), 200
+    
+    data = request.get_json()
+    word_count = data.get('word_count', 0)
+    
+    payment_amount = round(word_count * 0.001, 2)
+    
+    return jsonify({
+        'requires_payment': True,
+        'video_count': video_count,
+        'word_count': word_count,
+        'payment_amount': payment_amount
+    }), 200
+
 @app.route('/api/upload', methods=['POST'])
 @login_required
 def upload_novel():
@@ -190,9 +218,11 @@ def upload_novel():
         if not api_key:
             return jsonify({'error': '需要提供 API Key'}), 400
         
+        user_id = session.get('user_id')
+        
         thread = threading.Thread(
             target=generate_anime_async,
-            args=(task_id, file_path, max_scenes, api_key, provider, custom_prompt, enable_video, use_ai_analysis)
+            args=(task_id, file_path, max_scenes, api_key, provider, custom_prompt, enable_video, use_ai_analysis, user_id)
         )
         thread.start()
         
