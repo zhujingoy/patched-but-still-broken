@@ -300,6 +300,6 @@ def main(port):
 
 if __name__ == '__main__':
     port = 80 if sys.platform == 'linux' else 5000
-    main()
+    main(port)
 
 
