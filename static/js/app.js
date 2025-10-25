@@ -148,12 +148,14 @@ async function handleStartGenerate() {
     
     async function proceedWithUpload() {
         const enableVideo = document.getElementById('enable-video').checked;
+        const useStoryboard = document.getElementById('use-storyboard').checked;
         
         const formData = new FormData();
         formData.append('novel', fileInput.files[0]);
         formData.append('api_key', apiKey);
         formData.append('api_provider', apiProvider);
         formData.append('enable_video', enableVideo ? 'true' : 'false');
+        formData.append('use_storyboard', useStoryboard ? 'true' : 'false');
         if (maxScenes) {
             formData.append('max_scenes', maxScenes);
         }
@@ -260,6 +262,8 @@ function displayScene(index) {
     const sceneText = document.getElementById('scene-text');
     const sceneCounter = document.getElementById('scene-counter');
     const sceneCharacters = document.getElementById('scene-characters');
+    const sceneShotType = document.getElementById('scene-shot-type');
+    const sceneMood = document.getElementById('scene-mood');
 
     if (scene.video_url) {
         sceneImage.outerHTML = `<video id="scene-image" src="${scene.video_url}" controls autoplay loop style="width: 100%; height: auto; border-radius: 10px;"></video>`;
@@ -273,10 +277,31 @@ function displayScene(index) {
     }
     
     sceneText.textContent = scene.text;
-    sceneCounter.textContent = `场景 ${index + 1} / ${scenes.length}`;
+    sceneCounter.textContent = `分镜 ${index + 1} / ${scenes.length}`;
+    
+    if (sceneShotType && scene.shot_type) {
+        sceneShotType.textContent = `📷 ${scene.shot_type}`;
+    } else if (sceneShotType) {
+        sceneShotType.textContent = '';
+    }
+    
+    if (sceneMood && scene.mood) {
+        const moodEmojis = {
+            'happy': '😊',
+            'sad': '😢',
+            'tense': '😰',
+            'calm': '😌',
+            'surprised': '😲',
+            'angry': '😠'
+        };
+        const emoji = moodEmojis[scene.mood] || '😐';
+        sceneMood.textContent = `${emoji} ${scene.mood}`;
+    } else if (sceneMood) {
+        sceneMood.textContent = '';
+    }
     
     if (scene.characters && scene.characters.length > 0) {
-        sceneCharacters.textContent = `角色: ${scene.characters.join('、')}`;
+        sceneCharacters.textContent = `👥 ${scene.characters.join('、')}`;
     } else {
         sceneCharacters.textContent = '';
     }
