@@ -49,12 +49,12 @@ def generate_anime_async(task_id, novel_path, max_scenes, api_key, provider='qin
             generate_video=enable_video
         )
         
-        generated_scene_count = len(metadata.get('scenes', []))
+        generated_scene_count = len(metadata.get('panels', metadata.get('scenes', [])))
         generated_content_size = 0
-        for scene_info in metadata.get('scenes', []):
-            scene_folder = scene_info['folder']
-            if os.path.exists(scene_folder):
-                for root, dirs, files in os.walk(scene_folder):
+        for panel_info in metadata.get('panels', metadata.get('scenes', [])):
+            panel_folder = panel_info['folder']
+            if os.path.exists(panel_folder):
+                for root, dirs, files in os.walk(panel_folder):
                     for file in files:
                         file_path = os.path.join(root, file)
                         generated_content_size += os.path.getsize(file_path)
@@ -220,25 +220,29 @@ def get_scenes(task_id):
         return jsonify({'error': '任务未完成'}), 400
     
     metadata = status.get('metadata', {})
-    scenes = []
+    panels = []
     
-    for scene_info in metadata.get('scenes', []):
-        scene_folder = scene_info['folder']
-        metadata_path = os.path.join(scene_folder, 'metadata.json')
+    for panel_info in metadata.get('panels', metadata.get('scenes', [])):
+        panel_folder = panel_info['folder']
+        metadata_path = os.path.join(panel_folder, 'metadata.json')
         
         if os.path.exists(metadata_path):
             with open(metadata_path, 'r', encoding='utf-8') as f:
-                scene_data = json.load(f)
+                panel_data = json.load(f)
                 
-                scene_data['image_url'] = f"/api/file/{scene_folder}/scene.png"
-                scene_data['audio_url'] = f"/api/file/{scene_folder}/narration.mp3"
-                if scene_data.get('video_path'):
-                    scene_data['video_url'] = f"/api/file/{scene_folder}/scene.mp4"
-                scenes.append(scene_data)
+                image_name = 'panel.png' if 'panel_index' in panel_data else 'scene.png'
+                audio_name = 'audio.mp3' if 'panel_index' in panel_data else 'narration.mp3'
+                video_name = 'panel.mp4' if 'panel_index' in panel_data else 'scene.mp4'
+                
+                panel_data['image_url'] = f"/api/file/{panel_folder}/{image_name}"
+                panel_data['audio_url'] = f"/api/file/{panel_folder}/{audio_name}"
+                if panel_data.get('video_path'):
+                    panel_data['video_url'] = f"/api/file/{panel_folder}/{video_name}"
+                panels.append(panel_data)
     
     return jsonify({
-        'total_scenes': len(scenes),
-        'scenes': scenes
+        'total_scenes': len(panels),
+        'scenes': panels
     })
 
 @app.route('/api/file/<path:filepath>')

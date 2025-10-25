@@ -5,7 +5,7 @@ from novel_analyzer import NovelAnalyzer
 from character_manager import CharacterManager
 from image_generator import ImageGenerator
 from tts_generator import TTSGenerator
-from scene_composer import SceneComposer
+from storyboard_composer import StoryboardComposer
 from video_generator import VideoGenerator
 from typing import List, Dict
 import json
@@ -31,7 +31,7 @@ class AnimeGenerator:
         if use_ai_analysis:
             self.novel_analyzer = NovelAnalyzer(self.api_key)
         
-        self.scene_composer = SceneComposer(self.image_gen, self.tts_gen, self.char_mgr, self.video_gen)
+        self.storyboard_composer = StoryboardComposer(self.image_gen, self.tts_gen, self.char_mgr, self.video_gen)
         
         self.output_dir = "anime_output"
         os.makedirs(self.output_dir, exist_ok=True)
@@ -44,23 +44,27 @@ class AnimeGenerator:
         with open(novel_path, 'r', encoding='utf-8') as f:
             novel_text = f.read()
         
-        all_scenes = []
-        scene_index = 0
+        all_panels = []
+        panel_index = 0
         
         if self.use_ai_analysis and self.novel_analyzer:
-            print("=== 第一阶段：使用 DeepSeek AI 分析小说文本 ===")
+            print("=== 第一阶段：使用 DeepSeek AI 分析小说文本并提取角色 ===")
             
             analysis_result = self.novel_analyzer.analyze_novel_in_chunks(novel_text, max_chunks=None)
             
-            analyzed_scenes = analysis_result.get('scenes', [])
+            analyzed_storyboards = analysis_result.get('storyboards', [])
             analyzed_characters = analysis_result.get('characters', [])
             
-            print(f"AI分析完成，识别到 {len(analyzed_scenes)} 个场景，{len(analyzed_characters)} 个角色")
+            print(f"AI分析完成，识别到 {len(analyzed_characters)} 个角色，{len(analyzed_storyboards)} 个分镜")
             
-            print("\n=== 第二阶段：为每个角色生成稳定的外观和角色立绘 ===")
+            print("\n=== 第二阶段：设计主要角色并生成角色立绘 ===")
             character_portraits = {}
             
-            for char_info in analyzed_characters[:10]:
+            main_characters = [c for c in analyzed_characters if c.get('role') == '主要角色'][:10]
+            if not main_characters:
+                main_characters = analyzed_characters[:10]
+            
+            for char_info in main_characters:
                 char_name = char_info.get('name', '')
                 if not char_name:
                     continue
@@ -69,11 +73,12 @@ class AnimeGenerator:
                     char_name,
                     description=char_info.get('personality', ''),
                     appearance={
-                        'description': char_info.get('appearance', '')
+                        'description': char_info.get('appearance', ''),
+                        'background': char_info.get('background', '')
                     }
                 )
                 
-                print(f"生成角色 '{char_name}' 的立绘...")
+                print(f"设计角色 '{char_name}' 并生成立绘...")
                 appearance_prompt = self.novel_analyzer.generate_character_appearance_prompt(char_info)
                 
                 portrait_path = self.image_gen.generate_character_image(
@@ -84,66 +89,34 @@ class AnimeGenerator:
                 
                 if portrait_path:
                     character_portraits[char_name] = portrait_path
-                    print(f"✓ 角色 '{char_name}' 立绘生成完成")
+                    print(f"✓ 角色 '{char_name}' 设计完成")
                 else:
-                    print(f"✗ 角色 '{char_name}' 立绘生成失败")
+                    print(f"✗ 角色 '{char_name}' 生成失败")
             
-            print(f"\n角色立绘生成完成，共生成 {len(character_portraits)} 个角色立绘")
+            print(f"\n角色设计完成，共设计 {len(character_portraits)} 个主要角色")
             
-            print("\n=== 第三阶段：根据剧情生成对应的画面 ===")
-            scenes_to_process = analyzed_scenes
+            print("\n=== 第三阶段：按照情节发展生成分镜漫画 ===")
+            storyboards_to_process = analyzed_storyboards
             
             if max_scenes:
-                scenes_to_process = analyzed_scenes[:max_scenes]
+                storyboards_to_process = analyzed_storyboards[:max_scenes]
             
-            for scene_idx, scene_info in enumerate(scenes_to_process):
-                print(f"\n生成场景 {scene_idx + 1}/{len(scenes_to_process)}...")
-                
-                scene_metadata = self.scene_composer.create_scene_with_ai_analysis(
-                    scene_index=scene_idx,
-                    scene_info=scene_info,
-                    generate_video=generate_video
-                )
-                
-                all_scenes.append(scene_metadata)
+            all_panels = self.storyboard_composer.create_storyboards_from_analysis(
+                storyboards_to_process,
+                start_index=0,
+                generate_video=generate_video
+            )
         else:
-            parser = NovelParser(novel_text)
-            chapters = parser.parse()
-            
-            print(f"解析小说完成，共 {len(chapters)} 章")
-            
-            characters = self.char_mgr.extract_characters(novel_text)
-            print(f"提取到主要角色：{', '.join(characters[:10])}")
-            
-            for char_name in characters[:10]:
-                description = ""
-                if character_descriptions and char_name in character_descriptions:
-                    description = character_descriptions[char_name]
-                
-                self.char_mgr.register_character(char_name, description)
-            
-            for chapter_idx, chapter in enumerate(chapters):
-                print(f"\n处理章节 {chapter_idx + 1}/{len(chapters)}: {chapter['title']}")
-                
-                paragraphs = chapter['paragraphs']
-                
-                if max_scenes and scene_index >= max_scenes:
-                    print(f"已达到最大场景数 {max_scenes}，停止生成")
-                    break
-                
-                scenes_to_create = paragraphs
-                if max_scenes:
-                    remaining = max_scenes - scene_index
-                    scenes_to_create = paragraphs[:remaining]
-                
-                scenes = self.scene_composer.create_scenes_from_paragraphs(
-                    scenes_to_create,
-                    start_index=scene_index,
-                    generate_video=generate_video
-                )
-                
-                all_scenes.extend(scenes)
-                scene_index += len(scenes)
+            print("传统模式已移除，请启用 AI 分析模式 (use_ai_analysis=True)")
+            return {
+                'novel_path': novel_path,
+                'total_panels': 0,
+                'characters': [],
+                'use_ai_analysis': self.use_ai_analysis,
+                'character_portraits': {},
+                'panels': [],
+                'error': '传统模式已移除，请使用AI分析模式'
+            }
         
         character_portraits_data = {}
         if self.use_ai_analysis and self.novel_analyzer and 'character_portraits' in locals():
@@ -151,24 +124,25 @@ class AnimeGenerator:
         
         metadata = {
             'novel_path': novel_path,
-            'total_scenes': len(all_scenes),
+            'total_panels': len(all_panels),
             'characters': [char['name'] for char in self.char_mgr.get_all_characters()],
             'use_ai_analysis': self.use_ai_analysis,
             'character_portraits': character_portraits_data,
-            'scenes': [
+            'panels': [
                 {
-                    'scene_index': s['scene_index'],
-                    'folder': s['folder'],
-                    'characters': s['characters']
+                    'panel_index': p['panel_index'],
+                    'folder': p['folder'],
+                    'characters': p['characters'],
+                    'shot_type': p.get('shot_type', '')
                 }
-                for s in all_scenes
+                for p in all_panels
             ]
         }
         
         self._save_project_metadata(metadata)
         
-        print(f"\n动漫生成完成！")
-        print(f"总场景数：{len(all_scenes)}")
+        print(f"\n分镜漫画生成完成！")
+        print(f"总分镜数：{len(all_panels)}")
         print(f"输出目录：{self.output_dir}")
         
         return metadata

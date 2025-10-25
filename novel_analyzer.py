@@ -13,41 +13,39 @@ class NovelAnalyzer:
     
     def analyze_novel_text(self, text: str) -> Dict:
         system_prompt = """你是一个专业的小说分析助手。请分析输入的小说文本，提取以下信息：
-1. 场景(Scene)：识别文本中的不同场景，包括场景描述、地点、时间等
-2. 人物(Characters)：识别所有出现的人物，包括主要角色和次要角色，提取人物的外貌、性格特征
-3. 对话(Dialogues)：提取人物之间的对话内容，包括说话者的情绪状态
-4. 叙述(Narration)：提取旁白和描述性文本
+1. 人物(Characters)：识别所有出现的人物，包括主要角色和次要角色，提取人物的外貌、性格特征、背景故事
+2. 分镜(Storyboards)：根据情节发展将故事拆分为多个分镜，每个分镜包含画面描述、对话、叙述等
 
 请以JSON格式返回结果，格式如下：
 {
-  "scenes": [
-    {
-      "scene_number": 1,
-      "description": "场景描述",
-      "location": "地点",
-      "time": "时间",
-      "characters": ["出现的角色"],
-      "narration": "场景叙述文本",
-      "dialogues": [
-        {"character": "角色名", "text": "对话内容", "emotion": "情绪状态"}
-      ]
-    }
-  ],
   "characters": [
     {
       "name": "角色名",
-      "appearance": "外貌描述",
+      "appearance": "外貌描述(详细，包括发型、脸型、体型、服饰等)",
       "personality": "性格特征",
-      "role": "主要角色/次要角色"
+      "role": "主要角色/次要角色",
+      "background": "角色背景故事"
+    }
+  ],
+  "storyboards": [
+    {
+      "panel_number": 1,
+      "shot_type": "镜头类型(特写/中景/远景/全景等)",
+      "description": "画面描述(详细描述画面内容、角色动作、表情、场景环境)",
+      "characters": ["出现的角色"],
+      "dialogue": "对话内容(如果有)",
+      "narration": "旁白文本(如果有)",
+      "emotion": "情绪氛围(如：紧张、欢快、悲伤等)"
     }
   ]
 }
 
 重要规则：
-1. 场景描述应该详细，包含环境、氛围、人物位置等信息
-2. 确保场景描述包含统一的画风关键词(如：anime style, consistent art style)
-3. **角色一致性要求**：同一场景中角色的服饰、发型、脸型必须完全一致
-4. **情绪表达**：对话的emotion字段必须详细描述情绪（如：happy/开心, sad/悲伤, angry/愤怒, surprised/惊讶, worried/担忧等）"""
+1. 角色设计要详细完整，确保外貌描述足够生成一致的角色立绘
+2. 分镜描述应该像漫画分镜一样，详细说明每个画面的构图、角色位置、动作和表情
+3. 每个分镜对应一个漫画格子(panel)，根据情节节奏合理拆分
+4. 确保分镜描述包含统一的画风关键词(如：manga style, comic panel)
+5. 分镜的shot_type要多样化，包括特写、中景、远景等不同镜头语言"""
 
         try:
             response = self.client.chat.completions.create(
@@ -73,6 +71,8 @@ class NovelAnalyzer:
             
             try:
                 result = json.loads(result_text)
+                if 'storyboards' not in result:
+                    result['storyboards'] = result.get('scenes', [])
             except json.JSONDecodeError:
                 result = self._parse_fallback(result_text)
             
@@ -103,53 +103,42 @@ class NovelAnalyzer:
         
         return full_prompt
     
-    def generate_scene_image_prompt(self, scene_info: Dict, shot_info: Dict = None) -> str:
-        description = scene_info.get('description', '')
-        location = scene_info.get('location', '')
-        characters = scene_info.get('characters', [])
-        narration = scene_info.get('narration', '')
+    def generate_storyboard_image_prompt(self, storyboard_info: Dict) -> str:
+        description = storyboard_info.get('description', '')
+        shot_type = storyboard_info.get('shot_type', '')
+        characters = storyboard_info.get('characters', [])
+        emotion = storyboard_info.get('emotion', '')
         
         prompt_parts = []
         
-        if shot_info:
-            shot_type = shot_info.get('shot_type', '')
-            shot_desc = shot_info.get('description', '')
-            shot_focus = shot_info.get('focus', '')
-            
-            if shot_desc:
-                prompt_parts.append(shot_desc)
-            if shot_type:
-                prompt_parts.append(f"镜头类型：{shot_type}")
-            if shot_focus:
-                prompt_parts.append(f"焦点：{shot_focus}")
-        
         if description:
             prompt_parts.append(description)
-        elif narration:
-            prompt_parts.append(narration)
         
-        if location:
-            prompt_parts.append(f"地点：{location}")
+        if shot_type:
+            prompt_parts.append(f"镜头类型：{shot_type}")
         
         if characters:
             char_list = "、".join(characters)
             prompt_parts.append(f"角色：{char_list}")
         
+        if emotion:
+            prompt_parts.append(f"氛围：{emotion}")
+        
         full_prompt = ", ".join(prompt_parts)
-        full_prompt += ", 动漫风格场景, 高质量, 细节丰富的背景"
+        full_prompt += ", 漫画分镜风格, manga panel, comic style, 高质量, 细节丰富"
         
         return full_prompt
     
     def _parse_fallback(self, text: str) -> Dict:
         result = {
-            "scenes": [{
-                "scene_number": 1,
+            "storyboards": [{
+                "panel_number": 1,
+                "shot_type": "中景",
                 "description": text[:500] if len(text) > 500 else text,
-                "location": "",
-                "time": "",
                 "characters": [],
+                "dialogue": "",
                 "narration": text,
-                "dialogues": []
+                "emotion": "平静"
             }],
             "characters": []
         }
@@ -157,7 +146,7 @@ class NovelAnalyzer:
     
     def _create_empty_result(self) -> Dict:
         return {
-            "scenes": [],
+            "storyboards": [],
             "characters": []
         }
     
@@ -196,19 +185,19 @@ class NovelAnalyzer:
         if max_chunks:
             chunks = chunks[:max_chunks]
         
-        all_scenes = []
+        all_storyboards = []
         all_characters = {}
-        scene_counter = 0
+        panel_counter = 0
         
         for i, chunk in enumerate(chunks):
             print(f"分析文本块 {i+1}/{len(chunks)}...")
             
             chunk_result = self.analyze_novel_text(chunk)
             
-            for scene in chunk_result.get('scenes', []):
-                scene['scene_number'] = scene_counter
-                scene_counter += 1
-                all_scenes.append(scene)
+            for storyboard in chunk_result.get('storyboards', []):
+                storyboard['panel_number'] = panel_counter
+                panel_counter += 1
+                all_storyboards.append(storyboard)
             
             for char in chunk_result.get('characters', []):
                 char_name = char.get('name', '')
@@ -221,8 +210,10 @@ class NovelAnalyzer:
                             existing['appearance'] = char['appearance']
                         if not existing.get('personality') and char.get('personality'):
                             existing['personality'] = char['personality']
+                        if not existing.get('background') and char.get('background'):
+                            existing['background'] = char['background']
         
         return {
-            "scenes": all_scenes,
+            "storyboards": all_storyboards,
             "characters": list(all_characters.values())
         }
