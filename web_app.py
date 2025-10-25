@@ -12,6 +12,7 @@ from user_auth import register_user, login_user, get_user_by_id
 from functools import wraps
 import zipfile
 import io
+from video_merger import VideoMerger
 
 app = Flask(__name__, static_folder='static', template_folder='templates')
 app.secret_key = os.urandom(24)
@@ -264,28 +265,36 @@ def download_content(task_id):
     if not scenes:
         return jsonify({'error': '没有可下载的内容'}), 404
     
-    memory_file = io.BytesIO()
-    
-    with zipfile.ZipFile(memory_file, 'w', zipfile.ZIP_DEFLATED) as zf:
-        for idx, scene_info in enumerate(scenes):
-            scene_folder = scene_info['folder']
-            scene_prefix = f'scene_{idx + 1:03d}'
-            
-            if os.path.exists(scene_folder):
-                for root, dirs, files in os.walk(scene_folder):
-                    for file in files:
-                        file_path = os.path.join(root, file)
-                        arcname = os.path.join(scene_prefix, file)
-                        zf.write(file_path, arcname)
-    
-    memory_file.seek(0)
-    
-    return send_file(
-        memory_file,
-        mimetype='application/zip',
-        as_attachment=True,
-        download_name=f'anime_{task_id}.zip'
-    )
+    try:
+        scene_folders = [scene_info['folder'] for scene_info in scenes]
+        
+        output_video_path = os.path.join('temp_videos', f'merged_{task_id}.mp4')
+        os.makedirs('temp_videos', exist_ok=True)
+        
+        if os.path.exists(output_video_path):
+            return send_file(
+                output_video_path,
+                mimetype='video/mp4',
+                as_attachment=True,
+                download_name=f'anime_{task_id}.mp4'
+            )
+        
+        merger = VideoMerger()
+        success = merger.merge_scene_videos(scene_folders, output_video_path)
+        
+        if not success:
+            return jsonify({'error': '视频合并失败'}), 500
+        
+        return send_file(
+            output_video_path,
+            mimetype='video/mp4',
+            as_attachment=True,
+            download_name=f'anime_{task_id}.mp4'
+        )
+        
+    except Exception as e:
+        print(f"下载失败: {e}")
+        return jsonify({'error': f'下载失败: {str(e)}'}), 500
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)
