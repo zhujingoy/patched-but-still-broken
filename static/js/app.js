@@ -400,23 +400,58 @@ function displayHistory(history) {
     
     let html = '<table style="width: 100%; border-collapse: collapse;">';
     html += '<thead><tr style="background: #f0f0f0;">';
-    html += '<th style="padding: 10px; border: 1px solid #ddd;">会话 ID</th>';
-    html += '<th style="padding: 10px; border: 1px solid #ddd;">用户名</th>';
     html += '<th style="padding: 10px; border: 1px solid #ddd;">文件名</th>';
     html += '<th style="padding: 10px; border: 1px solid #ddd;">上传时间</th>';
-    html += '<th style="padding: 10px; border: 1px solid #ddd;">生成场景数</th>';
+    html += '<th style="padding: 10px; border: 1px solid #ddd;">操作</th>';
     html += '</tr></thead><tbody>';
     
     history.forEach(record => {
+        const uploadTime = record.created_at ? new Date(record.created_at.replace(' ', 'T')).toLocaleString('zh-CN', {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit'
+        }) : '-';
+        
         html += '<tr>';
-        html += `<td style="padding: 10px; border: 1px solid #ddd;">${record.session_id.substring(0, 8)}...</td>`;
-        html += `<td style="padding: 10px; border: 1px solid #ddd;">${record.username || '-'}</td>`;
         html += `<td style="padding: 10px; border: 1px solid #ddd;">${record.filename || '-'}</td>`;
-        html += `<td style="padding: 10px; border: 1px solid #ddd;">${new Date(record.created_at).toLocaleString('zh-CN')}</td>`;
-        html += `<td style="padding: 10px; border: 1px solid #ddd;">${record.generated_scene_count || 0}</td>`;
+        html += `<td style="padding: 10px; border: 1px solid #ddd;">${uploadTime}</td>`;
+        html += `<td style="padding: 10px; border: 1px solid #ddd;">`;
+        if (record.session_id && record.generated_scene_count > 0) {
+            html += `<a href="#" onclick="loadPlayback('${record.session_id}'); return false;" style="color: #007bff; text-decoration: none;">查看作品</a>`;
+        } else {
+            html += '<span style="color: #999;">生成中</span>';
+        }
+        html += `</td>`;
         html += '</tr>';
     });
     
     html += '</tbody></table>';
     historyList.innerHTML = html;
+}
+
+async function loadPlayback(sessionId) {
+    try {
+        const response = await fetch(`/api/scenes/${sessionId}`, {
+            credentials: 'include'
+        });
+        const data = await response.json();
+
+        if (response.ok) {
+            scenes = data.scenes;
+            currentSceneIndex = 0;
+            currentTaskId = sessionId;
+
+            document.getElementById('history-section').style.display = 'none';
+            document.getElementById('player-section').classList.remove('hidden');
+
+            displayScene(0);
+        } else {
+            alert('加载作品失败: ' + data.error);
+        }
+    } catch (error) {
+        alert('加载作品失败: ' + error.message);
+    }
 }
