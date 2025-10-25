@@ -6,6 +6,8 @@ from werkzeug.utils import secure_filename
 from anime_generator import AnimeGenerator
 import threading
 import uuid
+import jieba
+from statistics_db import insert_statistics, update_generation_stats
 
 app = Flask(__name__, static_folder='static', template_folder='templates')
 CORS(app)
@@ -45,6 +47,18 @@ def generate_anime_async(task_id, novel_path, max_scenes, api_key, provider='qin
             generate_storyboard=generate_storyboard
         )
         
+        generated_scene_count = len(metadata.get('scenes', []))
+        generated_content_size = 0
+        for scene_info in metadata.get('scenes', []):
+            scene_folder = scene_info['folder']
+            if os.path.exists(scene_folder):
+                for root, dirs, files in os.walk(scene_folder):
+                    for file in files:
+                        file_path = os.path.join(root, file)
+                        generated_content_size += os.path.getsize(file_path)
+        
+        update_generation_stats(task_id, generated_scene_count, generated_content_size)
+        
         generation_status[task_id] = {
             'status': 'completed',
             'progress': 100,
@@ -80,6 +94,22 @@ def upload_novel():
         task_id = str(uuid.uuid4())
         file_path = os.path.join(app.config['UPLOAD_FOLDER'], f"{task_id}_{filename}")
         file.save(file_path)
+        
+        client_address = request.remote_addr
+        upload_file_count = 1
+        upload_content_size = os.path.getsize(file_path)
+        
+        with open(file_path, 'r', encoding='utf-8') as f:
+            content = f.read()
+            upload_text_chars = len(content)
+        
+        insert_statistics(
+            session_id=task_id,
+            client_address=client_address,
+            upload_file_count=upload_file_count,
+            upload_text_chars=upload_text_chars,
+            upload_content_size=upload_content_size
+        )
         
         max_scenes = request.form.get('max_scenes', type=int)
         api_key = request.form.get('api_key', '')
