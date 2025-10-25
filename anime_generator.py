@@ -2,19 +2,17 @@ import os
 from dotenv import load_dotenv
 from novel_parser import NovelParser
 from novel_analyzer import NovelAnalyzer
-from storyboard_generator import StoryboardGenerator
 from character_manager import CharacterManager
 from image_generator import ImageGenerator
 from tts_generator import TTSGenerator
 from scene_composer import SceneComposer
-from storyboard_composer import StoryboardComposer
 from video_generator import VideoGenerator
 from typing import List, Dict
 import json
 
 
 class AnimeGenerator:
-    def __init__(self, openai_api_key: str = None, provider: str = "qiniu", custom_prompt: str = None, enable_video: bool = False, use_storyboard: bool = True):
+    def __init__(self, openai_api_key: str = None, provider: str = "qiniu", custom_prompt: str = None, enable_video: bool = False, use_ai_analysis: bool = True):
         load_dotenv()
         
         self.api_key = openai_api_key or os.getenv('OPENAI_API_KEY')
@@ -29,16 +27,15 @@ class AnimeGenerator:
         if enable_video:
             self.video_gen = VideoGenerator(self.api_key)
         
-        self.storyboard_gen = None
-        if use_storyboard:
-            self.storyboard_gen = StoryboardGenerator(self.api_key)
+        self.novel_analyzer = None
+        if use_ai_analysis:
+            self.novel_analyzer = NovelAnalyzer(self.api_key)
         
         self.scene_composer = SceneComposer(self.image_gen, self.tts_gen, self.char_mgr, self.video_gen)
-        self.storyboard_composer = StoryboardComposer(self.image_gen, self.tts_gen, self.char_mgr, self.video_gen)
         
         self.output_dir = "anime_output"
         os.makedirs(self.output_dir, exist_ok=True)
-        self.use_storyboard = use_storyboard
+        self.use_ai_analysis = use_ai_analysis
     
     def generate_from_novel(self, novel_path: str, 
                           max_scenes: int = None,
@@ -47,96 +44,10 @@ class AnimeGenerator:
         with open(novel_path, 'r', encoding='utf-8') as f:
             novel_text = f.read()
         
-        all_shots = []
-        
-        if self.use_storyboard and self.storyboard_gen:
-            print("=== 使用分镜模式生成漫画 ===")
-            
-            print("\n第一阶段：分析小说并设计主要角色")
-            storyboard_result = self.storyboard_gen.generate_storyboard_in_chunks(novel_text, max_shots=max_scenes)
-            
-            characters = storyboard_result.get('characters', [])
-            shots = storyboard_result.get('storyboard', [])
-            
-            print(f"识别到 {len(characters)} 个主要角色，{len(shots)} 个分镜")
-            
-            print("\n第二阶段：为每个主要角色生成角色设计")
-            character_portraits = {}
-            
-            for char_info in characters[:10]:
-                char_name = char_info.get('name', '')
-                if not char_name:
-                    continue
-                
-                self.char_mgr.register_character(
-                    char_name,
-                    description=char_info.get('personality', ''),
-                    appearance={
-                        'description': char_info.get('appearance', '')
-                    }
-                )
-                
-                print(f"生成角色 '{char_name}' 的设计稿...")
-                appearance_desc = char_info.get('appearance', '')
-                personality_desc = char_info.get('personality', '')
-                
-                appearance_prompt = f"角色名：{char_name}"
-                if appearance_desc:
-                    appearance_prompt += f"，外貌：{appearance_desc}"
-                if personality_desc:
-                    appearance_prompt += f"，性格：{personality_desc}"
-                appearance_prompt += "，动漫风格，角色立绘，全身像，高质量，细节丰富，一致的角色设计"
-                
-                portrait_path = self.image_gen.generate_character_image(
-                    char_name,
-                    appearance_prompt,
-                    style="anime"
-                )
-                
-                if portrait_path:
-                    character_portraits[char_name] = portrait_path
-                    print(f"✓ 角色 '{char_name}' 设计完成")
-                else:
-                    print(f"✗ 角色 '{char_name}' 设计失败")
-            
-            print(f"\n角色设计完成，共设计 {len(character_portraits)} 个角色")
-            
-            print("\n第三阶段：按照情节发展生成分镜漫画")
-            
-            all_shots = self.storyboard_composer.create_storyboard_shots(
-                shots=shots,
-                generate_video=generate_video
-            )
-            
-            metadata = {
-                'novel_path': novel_path,
-                'mode': 'storyboard',
-                'total_shots': len(all_shots),
-                'characters': [char['name'] for char in self.char_mgr.get_all_characters()],
-                'character_portraits': character_portraits,
-                'shots': [
-                    {
-                        'shot_index': s['shot_index'],
-                        'shot_type': s['shot_type'],
-                        'folder': s['folder'],
-                        'characters': s['characters']
-                    }
-                    for s in all_shots
-                ]
-            }
-            
-            self._save_project_metadata(metadata)
-            
-            print(f"\n分镜漫画生成完成！")
-            print(f"总分镜数：{len(all_shots)}")
-            print(f"输出目录：{self.output_dir}")
-            
-            return metadata
-        
         all_scenes = []
         scene_index = 0
         
-        if not self.use_storyboard and self.novel_analyzer:
+        if self.use_ai_analysis and self.novel_analyzer:
             print("=== 第一阶段：使用 DeepSeek AI 分析小说文本 ===")
             
             analysis_result = self.novel_analyzer.analyze_novel_in_chunks(novel_text, max_chunks=None)

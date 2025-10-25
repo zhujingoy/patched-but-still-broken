@@ -98,40 +98,37 @@ anime_output/
 ```
 
 
-## 工作原理（分镜模式）
+## 工作原理（第三版优化流程）
 
-### 第一阶段：主要角色设计
-- 使用 **DeepSeek AI** 模型分析小说文本
-- 识别所有主要角色及其外貌、性格特征
-- 为每个主要角色生成角色设计稿和立绘
-- 确保角色在所有分镜中保持一致的外观
+### 第一阶段：AI 文本分析
+- 使用 **DeepSeek AI** 模型深度分析小说文本
+- 提取结构化信息：
+  - **场景 (Scene)**：场景描述、地点、时间
+  - **人物 (Characters)**：角色名称、外貌、性格特征
+  - **对话 (Dialogues)**：角色对话内容
+  - **叙述 (Narration)**：旁白和描述性文本
 
-### 第二阶段：分镜生成
-- 根据小说情节发展，按时间顺序生成分镜（storyboard）
-- 每个分镜包含：
-  - **分镜类型**：特写/中景/全景/远景
-  - **场景描述**：环境、角色位置、动作
-  - **角色对话**：不同角色的对话内容和情绪
-  - **旁白文本**：叙述性内容
+### 第二阶段：角色立绘生成
+- 根据 AI 分析的角色信息生成稳定的外观设定
+- 为每个角色生成「角色立绘」（character portrait）
+- 确保角色在所有场景中保持一致的外观
 
-### 第三阶段：分镜漫画生成
-- 为每个分镜生成对应的图像
-- 将对话和旁白以简体中文叠加到图片上
-- 使用 gTTS 生成多角色语音配音
-  - **不同角色使用不同的声音**
-  - 自动合成对话和旁白音频
+### 第三阶段：场景生成
+- 根据 AI 分析的剧情信息生成对应画面
+- 为每个场景生成一张场景图片
+- 结合角色立绘信息，确保场景中角色准确呈现
+- 将文字叠加到图片上
+- 使用 gTTS 生成语音配音，确保声音与场景匹配
 
 ## 核心模块
 
-- `storyboard_generator.py` - **分镜生成器（使用 DeepSeek AI）**
-- `storyboard_composer.py` - **分镜组合器**
-- `novel_analyzer.py` - AI 小说分析器（传统场景模式）
+- `novel_analyzer.py` - **AI 小说分析器（使用 DeepSeek AI）**
 - `novel_parser.py` - 小说解析器（传统模式）
 - `character_manager.py` - 角色管理器
 - `image_generator.py` - 图片生成器（支持七牛 Gemini 和 OpenAI DALL-E 3）
-- `tts_generator.py` - **多角色语音生成器（基于 Google TTS，支持不同角色不同声音）**
+- `tts_generator.py` - 语音生成器（基于 Google TTS）
 - `video_generator.py` - 视频生成器（可选）
-- `scene_composer.py` - 场景组合器（传统模式）
+- `scene_composer.py` - 场景组合器
 - `anime_generator.py` - 主程序和命令行接口
 - `web_app.py` - Flask Web 服务器
 - `templates/` - HTML 模板文件
