@@ -1,12 +1,15 @@
-from flask import Flask, render_template, request, jsonify, send_from_directory, session, redirect, url_for
-from flask_cors import CORS
 import os
+import sys
 import json
-from werkzeug.utils import secure_filename
-from anime_generator import AnimeGenerator
 import threading
 import uuid
+
+from werkzeug.utils import secure_filename
+from anime_generator import AnimeGenerator
+
 import jieba
+from flask import Flask, render_template, request, jsonify, send_from_directory, session, redirect, url_for
+from flask_cors import CORS
 from statistics_db import insert_statistics, update_generation_stats, get_statistics
 from user_auth import register_user, login_user, get_user_by_id, get_user_video_count, increment_user_video_count
 from functools import wraps
@@ -290,5 +293,13 @@ def serve_file(filepath):
     filename = os.path.basename(filepath)
     return send_from_directory(directory, filename)
 
+
+def main(port):
+    app.run(debug=True, host='0.0.0.0', port=port)
+
+
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    port = 80 if sys.platform == 'linux' else 5000
+    main()
+
+
