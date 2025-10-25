@@ -32,14 +32,18 @@ class CharacterManager:
         return [name for name in names if name not in common_words]
     
     def register_character(self, name: str, description: str = "", 
-                          appearance: Dict = None, image_seed: int = None):
+                          appearance: Dict = None, image_seed: int = None, 
+                          character_tag: str = None):
         if name not in self.characters:
+            tag = character_tag or f"<{name}>"
             self.characters[name] = {
                 'name': name,
                 'description': description,
                 'appearance': appearance or {},
                 'image_seed': image_seed or hash(name) % 1000000,
-                'appearances': []
+                'appearances': [],
+                'character_tag': tag,
+                'appearance_count': 0
             }
     
     def get_character(self, name: str) -> Dict:
@@ -54,20 +58,46 @@ class CharacterManager:
                 self.characters[name]['appearance_descriptions'] = []
             self.characters[name]['appearance_descriptions'].append(appearance_description)
     
-    def get_character_prompt(self, name: str) -> str:
+    def get_character_prompt(self, name: str, include_consistency_hints: bool = True) -> str:
         char = self.get_character(name)
         if not char:
-            return f"角色：{name}"
+            return f"character: {name}"
         
-        prompt_parts = [f"角色：{name}"]
+        tag = char.get('character_tag', f"<{name}>")
+        appearance_count = char.get('appearance_count', 0)
+        
+        prompt_parts = []
+        
+        prompt_parts.append(f"character: {tag}")
         
         if char.get('description'):
-            prompt_parts.append(f"描述：{char['description']}")
+            prompt_parts.append(char['description'])
         
         if char.get('appearance'):
             appearance = char['appearance']
-            prompt_parts.append(f"外貌：{', '.join(f'{k}: {v}' for k, v in appearance.items())}")
+            appearance_desc = ', '.join(f"{v}" for k, v in appearance.items())
+            prompt_parts.append(appearance_desc)
         
-        prompt_parts.append(f"种子值：{char['image_seed']}")
+        if include_consistency_hints:
+            if appearance_count > 0:
+                prompt_parts.append(f"same character design as previous scenes")
+                prompt_parts.append(f"identical face and outfit")
+                prompt_parts.append(f"continuity maintained")
+            
+            prompt_parts.append("anime style")
+            prompt_parts.append("consistent character design")
+            prompt_parts.append("same outfit")
+            prompt_parts.append("same hairstyle")
+            prompt_parts.append("same proportions")
         
         return ', '.join(prompt_parts)
+    
+    def increment_appearance_count(self, name: str):
+        if name in self.characters:
+            self.characters[name]['appearance_count'] = self.characters[name].get('appearance_count', 0) + 1
+    
+    def get_character_seed(self, name: str) -> int:
+        char = self.get_character(name)
+        if char:
+            return char.get('image_seed', hash(name) % 1000000)
+        return hash(name) % 1000000

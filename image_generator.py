@@ -27,8 +27,12 @@ class ImageGenerator:
         
     def generate_character_image(self, character_name: str, 
                                 character_prompt: str,
-                                style: str = "anime") -> Optional[str]:
-        cache_key = hashlib.md5(f"{character_name}_{character_prompt}_{self.provider}".encode()).hexdigest()
+                                style: str = "anime",
+                                seed: Optional[int] = None) -> Optional[str]:
+        cache_key_base = f"{character_name}_{character_prompt}_{self.provider}"
+        if seed is not None:
+            cache_key_base += f"_{seed}"
+        cache_key = hashlib.md5(cache_key_base.encode()).hexdigest()
         cache_path = os.path.join(self.cache_dir, f"char_{cache_key}.png")
         
         if os.path.exists(cache_path):
@@ -41,25 +45,29 @@ class ImageGenerator:
         
         try:
             if self.provider == "qiniu":
-                response = self.client.images.generate(
-                    model="gemini-2.5-flash-image",
-                    prompt=full_prompt,
-                    size="1024x1024",
-                    n=1,
-                    response_format="b64_json"
-                )
+                generate_params = {
+                    "model": "gemini-2.5-flash-image",
+                    "prompt": full_prompt,
+                    "size": "1024x1024",
+                    "n": 1,
+                    "response_format": "b64_json"
+                }
+                
+                response = self.client.images.generate(**generate_params)
                 
                 img_data = base64.b64decode(response.data[0].b64_json)
                 img = Image.open(BytesIO(img_data))
                 img.save(cache_path)
             else:
-                response = self.client.images.generate(
-                    model="dall-e-3",
-                    prompt=full_prompt,
-                    size="1024x1024",
-                    quality="standard",
-                    n=1,
-                )
+                generate_params = {
+                    "model": "dall-e-3",
+                    "prompt": full_prompt,
+                    "size": "1024x1024",
+                    "quality": "standard",
+                    "n": 1
+                }
+                
+                response = self.client.images.generate(**generate_params)
                 
                 image_url = response.data[0].url
                 img_response = requests.get(image_url)
@@ -74,8 +82,13 @@ class ImageGenerator:
     
     def generate_scene_image(self, scene_description: str, 
                             characters: list = None,
-                            style: str = "anime") -> Optional[str]:
-        cache_key = hashlib.md5(f"{scene_description}_{self.provider}".encode()).hexdigest()
+                            style: str = "anime",
+                            character_seeds: Dict[str, int] = None) -> Optional[str]:
+        cache_key_base = f"{scene_description}_{self.provider}"
+        if character_seeds:
+            seeds_str = "_".join(str(v) for v in sorted(character_seeds.values()))
+            cache_key_base += f"_{seeds_str}"
+        cache_key = hashlib.md5(cache_key_base.encode()).hexdigest()
         cache_path = os.path.join(self.cache_dir, f"scene_{cache_key}.png")
         
         if os.path.exists(cache_path):
@@ -94,25 +107,29 @@ class ImageGenerator:
         
         try:
             if self.provider == "qiniu":
-                response = self.client.images.generate(
-                    model="gemini-2.5-flash-image",
-                    prompt=full_prompt,
-                    size="1792x1024",
-                    n=1,
-                    response_format="b64_json"
-                )
+                generate_params = {
+                    "model": "gemini-2.5-flash-image",
+                    "prompt": full_prompt,
+                    "size": "1792x1024",
+                    "n": 1,
+                    "response_format": "b64_json"
+                }
+                
+                response = self.client.images.generate(**generate_params)
                 
                 img_data = base64.b64decode(response.data[0].b64_json)
                 img = Image.open(BytesIO(img_data))
                 img.save(cache_path)
             else:
-                response = self.client.images.generate(
-                    model="dall-e-3",
-                    prompt=full_prompt,
-                    size="1792x1024",
-                    quality="standard",
-                    n=1,
-                )
+                generate_params = {
+                    "model": "dall-e-3",
+                    "prompt": full_prompt,
+                    "size": "1792x1024",
+                    "quality": "standard",
+                    "n": 1
+                }
+                
+                response = self.client.images.generate(**generate_params)
                 
                 image_url = response.data[0].url
                 img_response = requests.get(image_url)
@@ -131,8 +148,13 @@ class ImageGenerator:
                                  style: str = "anime",
                                  speaking_character: str = None,
                                  dialogue_text: str = None,
-                                 emotion: str = None) -> Optional[str]:
-        cache_key = hashlib.md5(f"{shot_description}_{shot_index}_{speaking_character}_{self.provider}".encode()).hexdigest()
+                                 emotion: str = None,
+                                 character_seeds: Dict[str, int] = None) -> Optional[str]:
+        cache_key_base = f"{shot_description}_{shot_index}_{speaking_character}_{self.provider}"
+        if character_seeds:
+            seeds_str = "_".join(str(v) for v in sorted(character_seeds.values()))
+            cache_key_base += f"_{seeds_str}"
+        cache_key = hashlib.md5(cache_key_base.encode()).hexdigest()
         cache_path = os.path.join(self.cache_dir, f"shot_{cache_key}.png")
         
         if os.path.exists(cache_path):
@@ -145,7 +167,7 @@ class ImageGenerator:
                 full_prompt += f", featuring characters: {char_desc}"
             if speaking_character:
                 emotion_desc = f", {emotion} expression" if emotion else ""
-                full_prompt += f", focus on {speaking_character}{emotion_desc}, facial expression emphasis"
+                full_prompt += f", focus on {speaking_character}{emotion_desc}, facial expression emphasis, same person as previous, identical face and outfit, continuity maintained"
         else:
             full_prompt = f"{self.style_consistency_keywords}, {shot_description}, cinematic composition, high quality, detailed"
             if characters:
@@ -153,29 +175,33 @@ class ImageGenerator:
                 full_prompt += f", featuring characters: {char_desc}"
             if speaking_character:
                 emotion_desc = f" with {emotion} expression" if emotion else ""
-                full_prompt += f", close-up focus on {speaking_character}{emotion_desc}, character portrait, detailed facial expression, same character design, consistent appearance"
+                full_prompt += f", close-up focus on {speaking_character}{emotion_desc}, character portrait, detailed facial expression, same character design, consistent appearance, same person as previous, identical face and outfit, continuity maintained"
         
         try:
             if self.provider == "qiniu":
-                response = self.client.images.generate(
-                    model="gemini-2.5-flash-image",
-                    prompt=full_prompt,
-                    size="1792x1024",
-                    n=1,
-                    response_format="b64_json"
-                )
+                generate_params = {
+                    "model": "gemini-2.5-flash-image",
+                    "prompt": full_prompt,
+                    "size": "1792x1024",
+                    "n": 1,
+                    "response_format": "b64_json"
+                }
+                
+                response = self.client.images.generate(**generate_params)
                 
                 img_data = base64.b64decode(response.data[0].b64_json)
                 img = Image.open(BytesIO(img_data))
                 img.save(cache_path)
             else:
-                response = self.client.images.generate(
-                    model="dall-e-3",
-                    prompt=full_prompt,
-                    size="1792x1024",
-                    quality="standard",
-                    n=1,
-                )
+                generate_params = {
+                    "model": "dall-e-3",
+                    "prompt": full_prompt,
+                    "size": "1792x1024",
+                    "quality": "standard",
+                    "n": 1
+                }
+                
+                response = self.client.images.generate(**generate_params)
                 
                 image_url = response.data[0].url
                 img_response = requests.get(image_url)

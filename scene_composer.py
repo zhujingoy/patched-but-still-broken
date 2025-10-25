@@ -33,9 +33,18 @@ class SceneComposer:
                            for char in characters_in_scene 
                            if self.char_mgr.get_character(char)]
         
+        character_seeds = {char: self.char_mgr.get_character_seed(char) 
+                          for char in characters_in_scene 
+                          if self.char_mgr.get_character(char)}
+        
+        for char in characters_in_scene:
+            if self.char_mgr.get_character(char):
+                self.char_mgr.increment_appearance_count(char)
+        
         scene_image = self.image_gen.generate_scene_image(
             scene_description,
-            characters=character_prompts
+            characters=character_prompts,
+            character_seeds=character_seeds
         )
         
         if scene_image:
@@ -140,6 +149,14 @@ class SceneComposer:
             if self.char_mgr.get_character(char):
                 character_prompts.append(self.char_mgr.get_character_prompt(char))
         
+        character_seeds = {char: self.char_mgr.get_character_seed(char) 
+                          for char in characters_in_scene 
+                          if self.char_mgr.get_character(char)}
+        
+        for char in characters_in_scene:
+            if self.char_mgr.get_character(char):
+                self.char_mgr.increment_appearance_count(char)
+        
         output_images = []
         
         if generate_storyboard and storyboard_shots:
@@ -170,7 +187,8 @@ class SceneComposer:
                     characters=character_prompts,
                     speaking_character=speaking_character,
                     dialogue_text=dialogue_text,
-                    emotion=emotion
+                    emotion=emotion,
+                    character_seeds=character_seeds
                 )
                 
                 if shot_image:
@@ -198,7 +216,8 @@ class SceneComposer:
         else:
             scene_image = self.image_gen.generate_scene_image(
                 scene_description,
-                characters=character_prompts
+                characters=character_prompts,
+                character_seeds=character_seeds
             )
             
             if scene_image:
