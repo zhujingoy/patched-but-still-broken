@@ -290,5 +290,11 @@ def serve_file(filepath):
     filename = os.path.basename(filepath)
     return send_from_directory(directory, filename)
 
+
+def main(port):
+    app.run(debug=True, host='0.0.0.0', port=port)
+
+
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    port = 80 if sys.platform == 'linux' else 5000
+    main()
