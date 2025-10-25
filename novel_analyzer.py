@@ -1,4 +1,3 @@
-import os
 from openai import OpenAI
 from typing import Dict, List
 import json
@@ -12,163 +11,211 @@ class NovelAnalyzer:
         )
         self.model = "deepseek/deepseek-v3.1-terminus"
     
-    def analyze_novel_text(self, text: str, max_chunk_size: int = 2000) -> Dict:
-        chunks = self._split_text_into_chunks(text, max_chunk_size)
-        
-        all_scenes = []
-        all_characters = {}
-        
-        for i, chunk in enumerate(chunks):
-            print(f"分析文本块 {i + 1}/{len(chunks)}...")
-            analysis = self._analyze_chunk(chunk)
-            
-            if analysis:
-                if 'scenes' in analysis:
-                    all_scenes.extend(analysis['scenes'])
-                if 'characters' in analysis:
-                    for char_name, char_info in analysis['characters'].items():
-                        if char_name not in all_characters:
-                            all_characters[char_name] = char_info
-                        else:
-                            if 'appearance' in char_info and char_info['appearance']:
-                                all_characters[char_name]['appearance'] = char_info['appearance']
-                            if 'personality' in char_info and char_info['personality']:
-                                all_characters[char_name]['personality'] = char_info['personality']
-        
-        return {
-            'scenes': all_scenes,
-            'characters': all_characters
-        }
-    
-    def _split_text_into_chunks(self, text: str, max_size: int) -> List[str]:
-        if len(text) <= max_size:
-            return [text]
-        
-        chunks = []
-        current_pos = 0
-        
-        while current_pos < len(text):
-            end_pos = min(current_pos + max_size, len(text))
-            
-            if end_pos < len(text):
-                for delimiter in ['。', '\n', '，', ' ']:
-                    last_delim = text.rfind(delimiter, current_pos, end_pos)
-                    if last_delim > current_pos:
-                        end_pos = last_delim + 1
-                        break
-            
-            chunks.append(text[current_pos:end_pos])
-            current_pos = end_pos
-        
-        return chunks
-    
-    def _analyze_chunk(self, text: str) -> Dict:
-        prompt = f"""请分析以下小说文本，提取结构化信息：
+    def analyze_novel_text(self, text: str) -> Dict:
+        system_prompt = """你是一个专业的小说分析助手。请分析输入的小说文本，提取以下信息：
+1. 场景(Scene)：识别文本中的不同场景，包括场景描述、地点、时间等
+2. 人物(Characters)：识别所有出现的人物，包括主要角色和次要角色，提取人物的外貌、性格特征
+3. 对话(Dialogues)：提取人物之间的对话内容
+4. 叙述(Narration)：提取旁白和描述性文本
+5. 分镜脚本(Storyboard)：为每个场景生成3-5个不同角度的镜头描述
 
-小说文本：
-{text}
-
-请以 JSON 格式返回以下信息：
-{{
+请以JSON格式返回结果，格式如下：
+{
   "scenes": [
-    {{
+    {
+      "scene_number": 1,
       "description": "场景描述",
       "location": "地点",
       "time": "时间",
-      "characters": ["角色1", "角色2"],
+      "characters": ["出现的角色"],
+      "narration": "场景叙述文本",
       "dialogues": [
-        {{"character": "角色名", "content": "对话内容"}}
+        {"character": "角色名", "text": "对话内容"}
       ],
-      "narration": "叙述描述",
       "storyboard_shots": [
-        {{"shot_type": "镜头类型(如特写/全景/中景)", "description": "镜头描述", "focus": "焦点内容"}}
+        {"shot_type": "特写/中景/全景/过肩镜头", "description": "镜头描述", "focus": "焦点内容"}
       ]
-    }}
+    }
   ],
-  "characters": {{
-    "角色名": {{
+  "characters": [
+    {
+      "name": "角色名",
       "appearance": "外貌描述",
-      "personality": "性格特征"
-    }}
-  }}
-}}
+      "personality": "性格特征",
+      "role": "主要角色/次要角色"
+    }
+  ]
+}
 
-注意：
-1. 提取所有明确的场景信息
-2. 识别出现的角色及其外貌和性格
-3. 记录角色之间的对话
-4. 为每个场景生成 3-5 个不同的分镜镜头描述，用于后续生成多张场景图片
-5. 分镜镜头应该包含不同的视角和焦点，如：特写、中景、全景、过肩镜头等
+注意：为每个场景生成3-5个不同视角的分镜镜头，包括特写、中景、全景、过肩镜头等。"""
 
-只返回 JSON，不要其他解释。"""
-        
         try:
             response = self.client.chat.completions.create(
                 model=self.model,
                 messages=[
-                    {
-                        "role": "system",
-                        "content": "你是一个专业的小说分析助手，擅长提取小说中的结构化信息并生成分镜脚本。"
-                    },
-                    {
-                        "role": "user",
-                        "content": prompt
-                    }
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": f"请分析以下小说文本：\n\n{text}"}
                 ],
-                temperature=0.7
+                temperature=0.7,
+                max_tokens=4000
             )
             
-            content = response.choices[0].message.content.strip()
+            result_text = response.choices[0].message.content
             
-            if content.startswith('```json'):
-                content = content[7:]
-            if content.startswith('```'):
-                content = content[3:]
-            if content.endswith('```'):
-                content = content[:-3]
-            content = content.strip()
+            result_text = result_text.strip()
+            if result_text.startswith("```json"):
+                result_text = result_text[7:]
+            if result_text.startswith("```"):
+                result_text = result_text[3:]
+            if result_text.endswith("```"):
+                result_text = result_text[:-3]
+            result_text = result_text.strip()
             
-            result = json.loads(content)
+            try:
+                result = json.loads(result_text)
+            except json.JSONDecodeError:
+                result = self._parse_fallback(result_text)
+            
             return result
             
-        except json.JSONDecodeError as e:
-            print(f"JSON 解析失败: {e}")
-            print(f"响应内容: {content[:200]}...")
-            return None
         except Exception as e:
-            print(f"AI 分析失败: {e}")
-            return None
+            print(f"AI分析失败: {e}")
+            return self._create_empty_result()
     
-    def generate_character_prompt(self, character_name: str, character_info: Dict) -> str:
-        prompt_parts = [f"角色名称：{character_name}"]
+    def generate_character_appearance_prompt(self, character_info: Dict) -> str:
+        name = character_info.get('name', '')
+        appearance = character_info.get('appearance', '')
+        personality = character_info.get('personality', '')
         
-        if character_info.get('appearance'):
-            prompt_parts.append(f"外貌：{character_info['appearance']}")
+        prompt_parts = []
+        if name:
+            prompt_parts.append(f"角色名：{name}")
+        if appearance:
+            prompt_parts.append(f"外貌：{appearance}")
+        if personality:
+            prompt_parts.append(f"性格：{personality}")
         
-        if character_info.get('personality'):
-            prompt_parts.append(f"性格：{character_info['personality']}")
+        if not prompt_parts:
+            return name
         
-        return "，".join(prompt_parts)
+        full_prompt = ", ".join(prompt_parts)
+        full_prompt += ", 动漫风格, 角色立绘, 全身像, 高质量, 细节丰富, 一致的角色设计"
+        
+        return full_prompt
     
-    def generate_scene_prompt(self, scene_info: Dict, shot_info: Dict = None) -> str:
+    def generate_scene_image_prompt(self, scene_info: Dict, shot_info: Dict = None) -> str:
+        description = scene_info.get('description', '')
+        location = scene_info.get('location', '')
+        characters = scene_info.get('characters', [])
+        narration = scene_info.get('narration', '')
+        
         prompt_parts = []
         
-        if scene_info.get('location'):
-            prompt_parts.append(f"地点：{scene_info['location']}")
-        
-        if scene_info.get('time'):
-            prompt_parts.append(f"时间：{scene_info['time']}")
-        
         if shot_info:
-            prompt_parts.append(f"镜头类型：{shot_info.get('shot_type', '中景')}")
-            prompt_parts.append(f"镜头描述：{shot_info.get('description', '')}")
-            if shot_info.get('focus'):
-                prompt_parts.append(f"焦点：{shot_info['focus']}")
-        else:
-            prompt_parts.append(f"场景：{scene_info.get('description', '')}")
+            shot_type = shot_info.get('shot_type', '')
+            shot_desc = shot_info.get('description', '')
+            shot_focus = shot_info.get('focus', '')
+            
+            if shot_desc:
+                prompt_parts.append(shot_desc)
+            if shot_type:
+                prompt_parts.append(f"镜头类型：{shot_type}")
+            if shot_focus:
+                prompt_parts.append(f"焦点：{shot_focus}")
         
-        if scene_info.get('characters'):
-            char_list = "、".join(scene_info['characters'])
+        if description:
+            prompt_parts.append(description)
+        elif narration:
+            prompt_parts.append(narration[:200])
+        
+        if location:
+            prompt_parts.append(f"地点：{location}")
+        
+        if characters:
+            char_list = "、".join(characters)
             prompt_parts.append(f"角色：{char_list}")
         
-        return "，".join(prompt_parts)
+        full_prompt = ", ".join(prompt_parts)
+        full_prompt += ", 动漫风格场景, 高质量, 细节丰富的背景"
+        
+        return full_prompt
+    
+    def _parse_fallback(self, text: str) -> Dict:
+        result = {
+            "scenes": [{
+                "scene_number": 1,
+                "description": text[:200],
+                "location": "",
+                "time": "",
+                "characters": [],
+                "narration": text,
+                "dialogues": []
+            }],
+            "characters": []
+        }
+        return result
+    
+    def _create_empty_result(self) -> Dict:
+        return {
+            "scenes": [],
+            "characters": []
+        }
+    
+    def split_text_into_chunks(self, text: str, max_chunk_size: int = 2000) -> List[str]:
+        paragraphs = [p.strip() for p in text.split('\n') if p.strip()]
+        
+        chunks = []
+        current_chunk = ""
+        
+        for para in paragraphs:
+            if len(current_chunk) + len(para) + 1 <= max_chunk_size:
+                if current_chunk:
+                    current_chunk += "\n" + para
+                else:
+                    current_chunk = para
+            else:
+                if current_chunk:
+                    chunks.append(current_chunk)
+                current_chunk = para
+        
+        if current_chunk:
+            chunks.append(current_chunk)
+        
+        return chunks
+    
+    def analyze_novel_in_chunks(self, text: str, max_chunks: int = None) -> Dict:
+        chunks = self.split_text_into_chunks(text)
+        
+        if max_chunks:
+            chunks = chunks[:max_chunks]
+        
+        all_scenes = []
+        all_characters = {}
+        scene_counter = 0
+        
+        for i, chunk in enumerate(chunks):
+            print(f"分析文本块 {i+1}/{len(chunks)}...")
+            
+            chunk_result = self.analyze_novel_text(chunk)
+            
+            for scene in chunk_result.get('scenes', []):
+                scene['scene_number'] = scene_counter
+                scene_counter += 1
+                all_scenes.append(scene)
+            
+            for char in chunk_result.get('characters', []):
+                char_name = char.get('name', '')
+                if char_name:
+                    if char_name not in all_characters:
+                        all_characters[char_name] = char
+                    else:
+                        existing = all_characters[char_name]
+                        if not existing.get('appearance') and char.get('appearance'):
+                            existing['appearance'] = char['appearance']
+                        if not existing.get('personality') and char.get('personality'):
+                            existing['personality'] = char['personality']
+        
+        return {
+            "scenes": all_scenes,
+            "characters": list(all_characters.values())
+        }
