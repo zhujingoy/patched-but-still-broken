@@ -15,9 +15,9 @@ class NovelAnalyzer:
         system_prompt = """你是一个专业的小说分析助手。请分析输入的小说文本，提取以下信息：
 1. 场景(Scene)：识别文本中的不同场景，包括场景描述、地点、时间等
 2. 人物(Characters)：识别所有出现的人物，包括主要角色和次要角色，提取人物的外貌、性格特征
-3. 对话(Dialogues)：提取人物之间的对话内容
+3. 对话(Dialogues)：提取人物之间的对话内容，包括说话者的情绪状态
 4. 叙述(Narration)：提取旁白和描述性文本
-5. 分镜脚本(Storyboard)：为每个场景生成3-5个不同角度的镜头描述
+5. 分镜脚本(Storyboard)：根据剧情和对话生成连贯的图片序列
 
 请以JSON格式返回结果，格式如下：
 {
@@ -30,10 +30,16 @@ class NovelAnalyzer:
       "characters": ["出现的角色"],
       "narration": "场景叙述文本",
       "dialogues": [
-        {"character": "角色名", "text": "对话内容"}
+        {"character": "角色名", "text": "对话内容", "emotion": "情绪状态"}
       ],
       "storyboard_shots": [
-        {"shot_type": "特写/中景/全景/过肩镜头", "description": "镜头描述", "focus": "焦点内容"}
+        {
+          "shot_type": "特写/中景/全景/过肩镜头/双人镜头", 
+          "description": "镜头描述", 
+          "focus": "焦点内容",
+          "speaking_character": "说话的角色(如果有)",
+          "dialogue_index": 对话索引(如果对应对话)
+        }
       ]
     }
   ],
@@ -47,7 +53,13 @@ class NovelAnalyzer:
   ]
 }
 
-注意：为每个场景生成3-5个不同视角的分镜镜头，包括特写、中景、全景、过肩镜头等。"""
+重要规则：
+1. 为每个对话生成至少一个镜头，说话角色应该有特写或中景镜头
+2. 角色说话时，优先使用「特写」镜头聚焦说话角色的表情和神态
+3. 对话场景应该生成多张连贯图片，展现对话过程
+4. 确保所有镜头描述包含统一的画风关键词(如：anime style, consistent art style)
+5. 每个场景至少生成3-5个镜头，对话较多的场景可以生成更多镜头
+6. 连续对话时要切换视角，避免重复相同镜头"""
 
         try:
             response = self.client.chat.completions.create(

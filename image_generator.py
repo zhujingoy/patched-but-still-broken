@@ -12,6 +12,7 @@ class ImageGenerator:
     def __init__(self, api_key: str, provider: str = "qiniu", custom_prompt: str = None):
         self.provider = provider
         self.custom_prompt = custom_prompt
+        self.style_consistency_keywords = "anime style, consistent art style, unified visual style, coherent character design"
         
         if provider == "qiniu":
             self.client = OpenAI(
@@ -36,7 +37,7 @@ class ImageGenerator:
         if self.custom_prompt:
             full_prompt = f"{self.custom_prompt}, {character_prompt}"
         else:
-            full_prompt = f"{style} style, {character_prompt}, high quality, detailed, consistent character design"
+            full_prompt = f"{self.style_consistency_keywords}, {character_prompt}, high quality, detailed, character reference sheet"
         
         try:
             if self.provider == "qiniu":
@@ -86,7 +87,7 @@ class ImageGenerator:
                 char_desc = ", ".join(characters)
                 full_prompt += f", featuring characters: {char_desc}"
         else:
-            full_prompt = f"{style} style scene: {scene_description}, high quality, detailed background"
+            full_prompt = f"{self.style_consistency_keywords}, scene: {scene_description}, high quality, detailed background, cinematic lighting"
             if characters:
                 char_desc = ", ".join(characters)
                 full_prompt += f", featuring characters: {char_desc}"
@@ -127,8 +128,11 @@ class ImageGenerator:
     def generate_storyboard_shot(self, shot_description: str, 
                                  shot_index: int,
                                  characters: list = None,
-                                 style: str = "anime") -> Optional[str]:
-        cache_key = hashlib.md5(f"{shot_description}_{shot_index}_{self.provider}".encode()).hexdigest()
+                                 style: str = "anime",
+                                 speaking_character: str = None,
+                                 dialogue_text: str = None,
+                                 emotion: str = None) -> Optional[str]:
+        cache_key = hashlib.md5(f"{shot_description}_{shot_index}_{speaking_character}_{self.provider}".encode()).hexdigest()
         cache_path = os.path.join(self.cache_dir, f"shot_{cache_key}.png")
         
         if os.path.exists(cache_path):
@@ -139,11 +143,17 @@ class ImageGenerator:
             if characters:
                 char_desc = ", ".join(characters)
                 full_prompt += f", featuring characters: {char_desc}"
+            if speaking_character:
+                emotion_desc = f", {emotion} expression" if emotion else ""
+                full_prompt += f", focus on {speaking_character}{emotion_desc}"
         else:
-            full_prompt = f"{style} style, {shot_description}, cinematic composition, high quality, detailed"
+            full_prompt = f"{self.style_consistency_keywords}, {shot_description}, cinematic composition, high quality, detailed"
             if characters:
                 char_desc = ", ".join(characters)
                 full_prompt += f", featuring characters: {char_desc}"
+            if speaking_character:
+                emotion_desc = f" with {emotion} expression" if emotion else ""
+                full_prompt += f", close-up focus on {speaking_character}{emotion_desc}, character portrait"
         
         try:
             if self.provider == "qiniu":
