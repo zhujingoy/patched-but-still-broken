@@ -23,9 +23,17 @@ def init_user_db():
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 username TEXT UNIQUE NOT NULL,
                 password_hash TEXT NOT NULL,
+                video_generation_count INTEGER DEFAULT 0,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         ''')
+        
+        cursor.execute("PRAGMA table_info(users)")
+        columns = [column[1] for column in cursor.fetchall()]
+        
+        if 'video_generation_count' not in columns:
+            cursor.execute('ALTER TABLE users ADD COLUMN video_generation_count INTEGER DEFAULT 0')
+        
         conn.commit()
 
 def hash_password(password):
@@ -85,10 +93,30 @@ def get_user_by_id(user_id):
     try:
         with get_db_connection() as conn:
             cursor = conn.cursor()
-            cursor.execute('SELECT id, username, created_at FROM users WHERE id = ?', (user_id,))
+            cursor.execute('SELECT id, username, created_at, video_generation_count FROM users WHERE id = ?', (user_id,))
             user = cursor.fetchone()
             return dict(user) if user else None
     except Exception as e:
         return None
+
+def get_user_video_count(user_id):
+    try:
+        with get_db_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute('SELECT video_generation_count FROM users WHERE id = ?', (user_id,))
+            result = cursor.fetchone()
+            return result['video_generation_count'] if result else 0
+    except Exception as e:
+        return 0
+
+def increment_user_video_count(user_id):
+    try:
+        with get_db_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute('UPDATE users SET video_generation_count = video_generation_count + 1 WHERE id = ?', (user_id,))
+            conn.commit()
+            return True
+    except Exception as e:
+        return False
 
 init_user_db()
