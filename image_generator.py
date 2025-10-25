@@ -12,7 +12,7 @@ class ImageGenerator:
     def __init__(self, api_key: str, provider: str = "qiniu", custom_prompt: str = None):
         self.provider = provider
         self.custom_prompt = custom_prompt
-        self.style_consistency_keywords = "anime style, consistent art style, unified visual style, coherent character design"
+        self.style_consistency_keywords = "anime style, consistent art style, unified visual style, coherent character design, same clothing, same hairstyle, same face shape, identical environment, consistent background"
         
         if provider == "qiniu":
             self.client = OpenAI(
@@ -145,7 +145,7 @@ class ImageGenerator:
                 full_prompt += f", featuring characters: {char_desc}"
             if speaking_character:
                 emotion_desc = f", {emotion} expression" if emotion else ""
-                full_prompt += f", focus on {speaking_character}{emotion_desc}"
+                full_prompt += f", focus on {speaking_character}{emotion_desc}, facial expression emphasis"
         else:
             full_prompt = f"{self.style_consistency_keywords}, {shot_description}, cinematic composition, high quality, detailed"
             if characters:
@@ -153,7 +153,7 @@ class ImageGenerator:
                 full_prompt += f", featuring characters: {char_desc}"
             if speaking_character:
                 emotion_desc = f" with {emotion} expression" if emotion else ""
-                full_prompt += f", close-up focus on {speaking_character}{emotion_desc}, character portrait"
+                full_prompt += f", close-up focus on {speaking_character}{emotion_desc}, character portrait, detailed facial expression, same character design, consistent appearance"
         
         try:
             if self.provider == "qiniu":
