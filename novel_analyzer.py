@@ -17,6 +17,7 @@ class NovelAnalyzer:
 2. 人物(Characters)：识别所有出现的人物，包括主要角色和次要角色，提取人物的外貌、性格特征
 3. 对话(Dialogues)：提取人物之间的对话内容
 4. 叙述(Narration)：提取旁白和描述性文本
+5. 分镜脚本(Storyboard)：为每个场景生成3-5个不同角度的镜头描述
 
 请以JSON格式返回结果，格式如下：
 {
@@ -30,6 +31,9 @@ class NovelAnalyzer:
       "narration": "场景叙述文本",
       "dialogues": [
         {"character": "角色名", "text": "对话内容"}
+      ],
+      "storyboard_shots": [
+        {"shot_type": "特写/中景/全景/过肩镜头", "description": "镜头描述", "focus": "焦点内容"}
       ]
     }
   ],
@@ -41,7 +45,9 @@ class NovelAnalyzer:
       "role": "主要角色/次要角色"
     }
   ]
-}"""
+}
+
+注意：为每个场景生成3-5个不同视角的分镜镜头，包括特写、中景、全景、过肩镜头等。"""
 
         try:
             response = self.client.chat.completions.create(
@@ -97,13 +103,25 @@ class NovelAnalyzer:
         
         return full_prompt
     
-    def generate_scene_image_prompt(self, scene_info: Dict) -> str:
+    def generate_scene_image_prompt(self, scene_info: Dict, shot_info: Dict = None) -> str:
         description = scene_info.get('description', '')
         location = scene_info.get('location', '')
         characters = scene_info.get('characters', [])
         narration = scene_info.get('narration', '')
         
         prompt_parts = []
+        
+        if shot_info:
+            shot_type = shot_info.get('shot_type', '')
+            shot_desc = shot_info.get('description', '')
+            shot_focus = shot_info.get('focus', '')
+            
+            if shot_desc:
+                prompt_parts.append(shot_desc)
+            if shot_type:
+                prompt_parts.append(f"镜头类型：{shot_type}")
+            if shot_focus:
+                prompt_parts.append(f"焦点：{shot_focus}")
         
         if description:
             prompt_parts.append(description)

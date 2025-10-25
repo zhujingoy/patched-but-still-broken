@@ -124,6 +124,60 @@ class ImageGenerator:
             print(f"生成场景图像失败: {e}")
             return None
     
+    def generate_storyboard_shot(self, shot_description: str, 
+                                 shot_index: int,
+                                 characters: list = None,
+                                 style: str = "anime") -> Optional[str]:
+        cache_key = hashlib.md5(f"{shot_description}_{shot_index}_{self.provider}".encode()).hexdigest()
+        cache_path = os.path.join(self.cache_dir, f"shot_{cache_key}.png")
+        
+        if os.path.exists(cache_path):
+            return cache_path
+        
+        if self.custom_prompt:
+            full_prompt = f"{self.custom_prompt}, {shot_description}"
+            if characters:
+                char_desc = ", ".join(characters)
+                full_prompt += f", featuring characters: {char_desc}"
+        else:
+            full_prompt = f"{style} style, {shot_description}, cinematic composition, high quality, detailed"
+            if characters:
+                char_desc = ", ".join(characters)
+                full_prompt += f", featuring characters: {char_desc}"
+        
+        try:
+            if self.provider == "qiniu":
+                response = self.client.images.generate(
+                    model="gemini-2.5-flash-image",
+                    prompt=full_prompt,
+                    size="1792x1024",
+                    n=1,
+                    response_format="b64_json"
+                )
+                
+                img_data = base64.b64decode(response.data[0].b64_json)
+                img = Image.open(BytesIO(img_data))
+                img.save(cache_path)
+            else:
+                response = self.client.images.generate(
+                    model="dall-e-3",
+                    prompt=full_prompt,
+                    size="1792x1024",
+                    quality="standard",
+                    n=1,
+                )
+                
+                image_url = response.data[0].url
+                img_response = requests.get(image_url)
+                img = Image.open(BytesIO(img_response.content))
+                img.save(cache_path)
+            
+            return cache_path
+            
+        except Exception as e:
+            print(f"生成分镜图像失败: {e}")
+            return None
+    
     def create_text_overlay(self, image_path: str, text: str, 
                           output_path: str, position: str = "bottom") -> bool:
         try:

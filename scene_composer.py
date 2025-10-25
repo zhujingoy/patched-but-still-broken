@@ -122,36 +122,77 @@ class SceneComposer:
         with open(metadata_path, 'w', encoding='utf-8') as f:
             json.dump(serializable_metadata, f, ensure_ascii=False, indent=2)
     
-    def create_scene_with_ai_analysis(self, scene_index: int, scene_text: str,
-                                      scene_description: str,
-                                      characters: List[str],
-                                      generate_video: bool = False) -> Dict:
+    def create_scene_with_ai_analysis(self, scene_index: int, 
+                                     scene_info: Dict,
+                                     generate_video: bool = False,
+                                     generate_storyboard: bool = True) -> Dict:
         scene_folder = os.path.join(self.output_dir, f"scene_{scene_index:04d}")
         os.makedirs(scene_folder, exist_ok=True)
         
-        for char_name in characters:
-            if not self.char_mgr.get_character(char_name):
-                self.char_mgr.register_character(char_name)
+        scene_text = scene_info.get('narration', '')
+        scene_description = scene_info.get('description', '')
+        characters_in_scene = scene_info.get('characters', [])
+        storyboard_shots = scene_info.get('storyboard_shots', [])
         
-        character_prompts = [self.char_mgr.get_character_prompt(char) 
-                           for char in characters 
-                           if self.char_mgr.get_character(char)]
+        character_prompts = []
+        for char in characters_in_scene:
+            if self.char_mgr.get_character(char):
+                character_prompts.append(self.char_mgr.get_character_prompt(char))
         
-        scene_image = self.image_gen.generate_scene_image(
-            scene_description,
-            characters=character_prompts
-        )
+        output_images = []
         
-        if scene_image:
-            output_image = os.path.join(scene_folder, "scene.png")
-            
-            self.image_gen.create_text_overlay(
-                scene_image,
-                scene_text,
-                output_image
-            )
+        if generate_storyboard and storyboard_shots:
+            print(f"  生成 {len(storyboard_shots)} 个分镜镜头...")
+            for shot_idx, shot_info in enumerate(storyboard_shots):
+                shot_description = shot_info.get('description', '')
+                shot_type = shot_info.get('shot_type', '')
+                focus = shot_info.get('focus', '')
+                
+                full_description = f"{shot_type}: {shot_description}"
+                if focus:
+                    full_description += f", 焦点: {focus}"
+                
+                shot_image = self.image_gen.generate_storyboard_shot(
+                    full_description,
+                    shot_idx,
+                    characters=character_prompts
+                )
+                
+                if shot_image:
+                    output_image = os.path.join(scene_folder, f"shot_{shot_idx:02d}.png")
+                    
+                    shot_text = f"{shot_type} - {shot_description}"
+                    self.image_gen.create_text_overlay(
+                        shot_image,
+                        shot_text,
+                        output_image
+                    )
+                    output_images.append({
+                        'path': output_image,
+                        'shot_type': shot_type,
+                        'description': shot_description,
+                        'index': shot_idx
+                    })
         else:
-            output_image = None
+            scene_image = self.image_gen.generate_scene_image(
+                scene_description,
+                characters=character_prompts
+            )
+            
+            if scene_image:
+                output_image = os.path.join(scene_folder, "scene.png")
+                
+                self.image_gen.create_text_overlay(
+                    scene_image,
+                    scene_text,
+                    output_image
+                )
+                output_images.append({
+                    'path': output_image,
+                    'shot_type': 'main',
+                    'description': scene_description,
+                    'index': 0
+                })
         
         audio_file = self.tts_gen.generate_speech_for_scene(scene_text, scene_index)
         
@@ -164,10 +205,11 @@ class SceneComposer:
             output_audio = None
         
         output_video = None
-        if generate_video and self.video_gen and scene_image:
+        if generate_video and self.video_gen and output_images:
+            first_image = output_images[0]['path']
             video_file = self.video_gen.generate_video(
                 prompt=scene_description,
-                image_path=scene_image
+                image_path=first_image
             )
             if video_file:
                 output_video = os.path.join(scene_folder, "scene.mp4")
@@ -179,8 +221,8 @@ class SceneComposer:
             'scene_index': scene_index,
             'text': scene_text,
             'description': scene_description,
-            'characters': characters,
-            'image_path': output_image,
+            'characters': characters_in_scene,
+            'storyboard_shots': output_images,
             'audio_path': output_audio,
             'video_path': output_video,
             'folder': scene_folder

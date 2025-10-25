@@ -23,7 +23,7 @@ generation_status = {}
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
-def generate_anime_async(task_id, novel_path, max_scenes, api_key, provider='qiniu', custom_prompt=None, enable_video=False):
+def generate_anime_async(task_id, novel_path, max_scenes, api_key, provider='qiniu', custom_prompt=None, enable_video=False, use_ai_analysis=True, generate_storyboard=True):
     try:
         generation_status[task_id] = {
             'status': 'processing',
@@ -31,8 +31,19 @@ def generate_anime_async(task_id, novel_path, max_scenes, api_key, provider='qin
             'message': '正在解析小说...'
         }
         
-        generator = AnimeGenerator(openai_api_key=api_key, provider=provider, custom_prompt=custom_prompt, enable_video=enable_video)
-        metadata = generator.generate_from_novel(novel_path, max_scenes=max_scenes, generate_video=enable_video)
+        generator = AnimeGenerator(
+            openai_api_key=api_key, 
+            provider=provider, 
+            custom_prompt=custom_prompt, 
+            enable_video=enable_video,
+            use_ai_analysis=use_ai_analysis
+        )
+        metadata = generator.generate_from_novel(
+            novel_path, 
+            max_scenes=max_scenes, 
+            generate_video=enable_video,
+            generate_storyboard=generate_storyboard
+        )
         
         generation_status[task_id] = {
             'status': 'completed',
@@ -75,6 +86,8 @@ def upload_novel():
         provider = request.form.get('api_provider', 'qiniu')
         custom_prompt = request.form.get('custom_prompt', '')
         enable_video = request.form.get('enable_video', 'false').lower() == 'true'
+        use_ai_analysis = request.form.get('use_ai_analysis', 'true').lower() == 'true'
+        generate_storyboard = request.form.get('generate_storyboard', 'true').lower() == 'true'
         
         if not api_key:
             api_key = os.getenv('OPENAI_API_KEY')
@@ -84,7 +97,7 @@ def upload_novel():
         
         thread = threading.Thread(
             target=generate_anime_async,
-            args=(task_id, file_path, max_scenes, api_key, provider, custom_prompt, enable_video)
+            args=(task_id, file_path, max_scenes, api_key, provider, custom_prompt, enable_video, use_ai_analysis, generate_storyboard)
         )
         thread.start()
         
@@ -122,7 +135,16 @@ def get_scenes(task_id):
             with open(metadata_path, 'r', encoding='utf-8') as f:
                 scene_data = json.load(f)
                 
-                scene_data['image_url'] = f"/api/file/{scene_folder}/scene.png"
+                if scene_data.get('storyboard_shots'):
+                    scene_data['shot_urls'] = []
+                    for shot in scene_data['storyboard_shots']:
+                        shot_path = shot.get('path', '')
+                        if shot_path:
+                            shot['url'] = f"/api/file/{shot_path}"
+                            scene_data['shot_urls'].append(shot)
+                else:
+                    scene_data['image_url'] = f"/api/file/{scene_folder}/scene.png"
+                
                 scene_data['audio_url'] = f"/api/file/{scene_folder}/narration.mp3"
                 if scene_data.get('video_path'):
                     scene_data['video_url'] = f"/api/file/{scene_folder}/scene.mp4"
