@@ -52,8 +52,6 @@ class ImageGenerator:
                     "n": 1,
                     "response_format": "b64_json"
                 }
-                if seed is not None:
-                    generate_params["seed"] = seed
                 
                 response = self.client.images.generate(**generate_params)
                 
