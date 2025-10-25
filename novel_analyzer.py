@@ -82,6 +82,76 @@ class NovelAnalyzer:
             print(f"AI分析失败: {e}")
             return self._create_empty_result()
     
+    def generate_character_design(self, character_info: Dict) -> Dict:
+        name = character_info.get('name', '')
+        appearance = character_info.get('appearance', '')
+        personality = character_info.get('personality', '')
+        
+        system_prompt = """你是一个专业的角色设计师。请根据角色信息生成详细的角色设计档案。
+
+请以JSON格式返回，包含以下信息：
+{
+  "name": "角色名",
+  "appearance": {
+    "face": "面部特征（脸型、五官）",
+    "hair": "发型和发色",
+    "eyes": "眼睛颜色和特征",
+    "body": "身材特征",
+    "clothing": "服装风格和颜色",
+    "accessories": "配饰或特殊标记"
+  },
+  "personality_traits": ["性格特征1", "性格特征2"],
+  "visual_keywords": "用于AI绘图的关键词组合"
+}
+
+重要：visual_keywords应该包含所有外貌细节，确保角色在所有场景中保持一致。"""
+
+        try:
+            char_desc = f"角色名: {name}\n外貌: {appearance}\n性格: {personality}"
+            
+            response = self.client.chat.completions.create(
+                model=self.model,
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": f"请为以下角色生成详细设计档案：\n\n{char_desc}"}
+                ],
+                temperature=0.7,
+                max_tokens=2000
+            )
+            
+            result_text = response.choices[0].message.content
+            
+            result_text = result_text.strip()
+            if result_text.startswith("```json"):
+                result_text = result_text[7:]
+            if result_text.startswith("```"):
+                result_text = result_text[3:]
+            if result_text.endswith("```"):
+                result_text = result_text[:-3]
+            result_text = result_text.strip()
+            
+            design = json.loads(result_text)
+            return design
+            
+        except Exception as e:
+            print(f"角色设计生成失败: {e}")
+            return self._create_fallback_design(name, appearance, personality)
+    
+    def _create_fallback_design(self, name: str, appearance: str, personality: str) -> Dict:
+        return {
+            "name": name,
+            "appearance": {
+                "face": appearance,
+                "hair": "",
+                "eyes": "",
+                "body": "",
+                "clothing": "",
+                "accessories": ""
+            },
+            "personality_traits": [personality] if personality else [],
+            "visual_keywords": f"{name}, {appearance}, 动漫风格"
+        }
+    
     def generate_character_appearance_prompt(self, character_info: Dict) -> str:
         name = character_info.get('name', '')
         appearance = character_info.get('appearance', '')

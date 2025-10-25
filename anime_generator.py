@@ -2,6 +2,7 @@ import os
 from dotenv import load_dotenv
 from novel_parser import NovelParser
 from novel_analyzer import NovelAnalyzer
+from storyboard_generator import StoryboardGenerator
 from character_manager import CharacterManager
 from image_generator import ImageGenerator
 from tts_generator import TTSGenerator
@@ -28,8 +29,10 @@ class AnimeGenerator:
             self.video_gen = VideoGenerator(self.api_key)
         
         self.novel_analyzer = None
+        self.storyboard_gen = None
         if use_ai_analysis:
             self.novel_analyzer = NovelAnalyzer(self.api_key)
+            self.storyboard_gen = StoryboardGenerator(self.api_key)
         
         self.scene_composer = SceneComposer(self.image_gen, self.tts_gen, self.char_mgr, self.video_gen)
         
@@ -40,7 +43,8 @@ class AnimeGenerator:
     def generate_from_novel(self, novel_path: str, 
                           max_scenes: int = None,
                           character_descriptions: Dict[str, str] = None,
-                          generate_video: bool = False) -> Dict:
+                          generate_video: bool = False,
+                          use_storyboard: bool = True) -> Dict:
         with open(novel_path, 'r', encoding='utf-8') as f:
             novel_text = f.read()
         
@@ -57,24 +61,29 @@ class AnimeGenerator:
             
             print(f"AI分析完成，识别到 {len(analyzed_scenes)} 个场景，{len(analyzed_characters)} 个角色")
             
-            print("\n=== 第二阶段：为每个角色生成稳定的外观和角色立绘 ===")
+            print("\n=== 第二阶段：为主要角色生成详细设计档案 ===")
             character_portraits = {}
+            character_designs = {}
             
             for char_info in analyzed_characters[:10]:
                 char_name = char_info.get('name', '')
                 if not char_name:
                     continue
                 
+                print(f"为角色 '{char_name}' 生成设计档案...")
+                design = self.novel_analyzer.generate_character_design(char_info)
+                character_designs[char_name] = design
+                
                 self.char_mgr.register_character(
                     char_name,
                     description=char_info.get('personality', ''),
                     appearance={
-                        'description': char_info.get('appearance', '')
+                        'description': design.get('visual_keywords', char_info.get('appearance', ''))
                     }
                 )
                 
                 print(f"生成角色 '{char_name}' 的立绘...")
-                appearance_prompt = self.novel_analyzer.generate_character_appearance_prompt(char_info)
+                appearance_prompt = design.get('visual_keywords', '') or self.novel_analyzer.generate_character_appearance_prompt(char_info)
                 
                 portrait_path = self.image_gen.generate_character_image(
                     char_name,
@@ -84,28 +93,56 @@ class AnimeGenerator:
                 
                 if portrait_path:
                     character_portraits[char_name] = portrait_path
-                    print(f"✓ 角色 '{char_name}' 立绘生成完成")
+                    print(f"✓ 角色 '{char_name}' 设计完成")
                 else:
                     print(f"✗ 角色 '{char_name}' 立绘生成失败")
             
-            print(f"\n角色立绘生成完成，共生成 {len(character_portraits)} 个角色立绘")
+            print(f"\n角色设计完成，共生成 {len(character_portraits)} 个角色")
             
-            print("\n=== 第三阶段：根据剧情生成对应的画面 ===")
-            scenes_to_process = analyzed_scenes
-            
-            if max_scenes:
-                scenes_to_process = analyzed_scenes[:max_scenes]
-            
-            for scene_idx, scene_info in enumerate(scenes_to_process):
-                print(f"\n生成场景 {scene_idx + 1}/{len(scenes_to_process)}...")
-                
-                scene_metadata = self.scene_composer.create_scene_with_ai_analysis(
-                    scene_index=scene_idx,
-                    scene_info=scene_info,
-                    generate_video=generate_video
+            if use_storyboard and self.storyboard_gen:
+                print("\n=== 第三阶段：根据情节生成分镜脚本 ===")
+                storyboard_result = self.storyboard_gen.generate_storyboard_in_chunks(
+                    novel_text, 
+                    analyzed_characters
                 )
                 
-                all_scenes.append(scene_metadata)
+                storyboard_panels = storyboard_result.get('storyboard', [])
+                print(f"分镜生成完成，共 {len(storyboard_panels)} 个分镜")
+                
+                print("\n=== 第四阶段：根据分镜生成画面 ===")
+                panels_to_process = storyboard_panels
+                
+                if max_scenes:
+                    panels_to_process = storyboard_panels[:max_scenes]
+                
+                for panel_idx, panel_info in enumerate(panels_to_process):
+                    print(f"\n生成分镜 {panel_idx + 1}/{len(panels_to_process)}...")
+                    
+                    scene_metadata = self.scene_composer.create_scene_from_storyboard(
+                        scene_index=panel_idx,
+                        panel_info=panel_info,
+                        character_designs={name: design.get('visual_keywords', '') for name, design in character_designs.items()},
+                        generate_video=generate_video
+                    )
+                    
+                    all_scenes.append(scene_metadata)
+            else:
+                print("\n=== 第三阶段：根据场景生成画面（传统模式）===")
+                scenes_to_process = analyzed_scenes
+                
+                if max_scenes:
+                    scenes_to_process = analyzed_scenes[:max_scenes]
+                
+                for scene_idx, scene_info in enumerate(scenes_to_process):
+                    print(f"\n生成场景 {scene_idx + 1}/{len(scenes_to_process)}...")
+                    
+                    scene_metadata = self.scene_composer.create_scene_with_ai_analysis(
+                        scene_index=scene_idx,
+                        scene_info=scene_info,
+                        generate_video=generate_video
+                    )
+                    
+                    all_scenes.append(scene_metadata)
         else:
             parser = NovelParser(novel_text)
             chapters = parser.parse()
