@@ -109,6 +109,12 @@ def login_page():
 def settings():
     return render_template('settings.html')
 
+
+@app.route('/favicon.ico')
+def get_favicon():
+    return send_from_directory(os.path.join(app.root_path, 'static'), 'favicon.ico', mimetype='image/vnd.microsoft.icon')
+
+
 @app.route('/api/register', methods=['POST'])
 def register():
     data = request.get_json()
