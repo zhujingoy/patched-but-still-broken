@@ -4,6 +4,7 @@ import json
 import threading
 import uuid
 from functools import wraps
+from gevent.pywsgi import WSGIServer
 
 from werkzeug.utils import secure_filename
 from anime_generator import AnimeGenerator
@@ -320,12 +321,9 @@ class FlaskAppWrapper:
         self.app_.run(debug=debug, host=host, port=self.port_)
 
 
-def main(port=None):
-    if port is None:
-        port = 80 if sys.platform == 'linux' else 5000
-    
+def main(port):
     server = FlaskAppWrapper('novel_to_anime', port=port)
-    server.run(debug=True, host='0.0.0.0')
+    WSGIServer(('0.0.0.0', server.port_), server.app_).serve_forever()
 
 
 if __name__ == '__main__':
