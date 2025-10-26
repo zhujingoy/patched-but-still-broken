@@ -94,25 +94,52 @@ class StoryboardGenerator:
             print(f"分镜生成失败: {e}")
             return self._create_fallback_storyboard(text)
     
-    def generate_storyboard_in_chunks(self, text: str, characters: List[Dict], max_chunk_size: int = 2000) -> Dict:
+    def generate_storyboard_in_chunks(self, text: str, characters: List[Dict], max_chunk_size: int = 2000, max_retries: int = 3) -> Dict:
         chunks = self._split_text_into_chunks(text, max_chunk_size)
         
         all_panels = []
         panel_counter = 0
+        success_count = 0
+        failure_count = 0
         
         for i, chunk in enumerate(chunks):
             print(f"生成分镜 {i+1}/{len(chunks)}...")
             
-            chunk_result = self.generate_storyboard_from_novel(chunk, characters)
+            chunk_result = None
+            retry_count = 0
             
-            for panel in chunk_result.get('storyboard', []):
-                panel['panel_number'] = panel_counter
-                panel_counter += 1
-                all_panels.append(panel)
+            while retry_count < max_retries:
+                try:
+                    chunk_result = self.generate_storyboard_from_novel(chunk, characters)
+                    
+                    if chunk_result and chunk_result.get('storyboard'):
+                        success_count += 1
+                        break
+                    else:
+                        retry_count += 1
+                        if retry_count < max_retries:
+                            print(f"分镜 {i+1} 生成结果为空，重试 {retry_count}/{max_retries}...")
+                except Exception as e:
+                    retry_count += 1
+                    if retry_count < max_retries:
+                        print(f"分镜 {i+1} 生成失败: {e}，重试 {retry_count}/{max_retries}...")
+                    else:
+                        print(f"分镜 {i+1} 生成失败，已达到最大重试次数: {e}")
+            
+            if chunk_result and chunk_result.get('storyboard'):
+                for panel in chunk_result.get('storyboard', []):
+                    panel['panel_number'] = panel_counter
+                    panel_counter += 1
+                    all_panels.append(panel)
+            else:
+                failure_count += 1
+                print(f"分镜 {i+1} 最终生成失败")
         
         return {
             "storyboard": all_panels,
-            "total_panels": len(all_panels)
+            "total_panels": len(all_panels),
+            "success_count": success_count,
+            "failure_count": failure_count
         }
     
     def _split_text_into_chunks(self, text: str, max_chunk_size: int) -> List[str]:
