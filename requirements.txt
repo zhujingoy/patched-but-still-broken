@@ -9,3 +9,5 @@ jieba>=0.42.1
 flask>=3.0.0
 flask-cors>=4.0.0
 moviepy>=1.0.3
+pymysql>=1.1.0
+gevent>=21.0.0

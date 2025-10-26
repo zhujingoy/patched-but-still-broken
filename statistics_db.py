@@ -1,14 +1,12 @@
-import sqlite3
+import pymysql
 import os
 from datetime import datetime
 from contextlib import contextmanager
-
-DB_PATH = 'generation_statistics.db'
+from db_config import DB_CONFIG
 
 @contextmanager
 def get_db_connection():
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
+    conn = pymysql.connect(**DB_CONFIG)
     try:
         yield conn
     finally:
@@ -19,29 +17,22 @@ def init_db():
         cursor = conn.cursor()
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS generation_statistics (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                session_id TEXT NOT NULL,
-                client_address TEXT NOT NULL,
-                upload_file_count INTEGER NOT NULL,
-                upload_text_chars INTEGER NOT NULL,
-                upload_content_size INTEGER NOT NULL,
-                generated_scene_count INTEGER DEFAULT 0,
-                generated_content_size INTEGER DEFAULT 0,
-                username TEXT,
-                filename TEXT,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                session_id VARCHAR(255) NOT NULL,
+                client_address VARCHAR(255) NOT NULL,
+                upload_file_count INT NOT NULL,
+                upload_text_chars INT NOT NULL,
+                upload_content_size INT NOT NULL,
+                generated_scene_count INT DEFAULT 0,
+                generated_content_size INT DEFAULT 0,
+                username VARCHAR(255),
+                filename VARCHAR(255),
+                metadata TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                INDEX idx_session_id (session_id),
+                INDEX idx_username (username)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
         ''')
-        
-        cursor.execute("PRAGMA table_info(generation_statistics)")
-        columns = [column[1] for column in cursor.fetchall()]
-        
-        if 'username' not in columns:
-            cursor.execute('ALTER TABLE generation_statistics ADD COLUMN username TEXT')
-        
-        if 'filename' not in columns:
-            cursor.execute('ALTER TABLE generation_statistics ADD COLUMN filename TEXT')
-        
         conn.commit()
 
 def insert_statistics(session_id, client_address, upload_file_count, upload_text_chars, upload_content_size, username=None, filename=None):
@@ -50,36 +41,46 @@ def insert_statistics(session_id, client_address, upload_file_count, upload_text
         cursor.execute('''
             INSERT INTO generation_statistics 
             (session_id, client_address, upload_file_count, upload_text_chars, upload_content_size, username, filename)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
         ''', (session_id, client_address, upload_file_count, upload_text_chars, upload_content_size, username, filename))
         conn.commit()
         return cursor.lastrowid
 
-def update_generation_stats(session_id, generated_scene_count, generated_content_size):
+def update_generation_stats(session_id, generated_scene_count, generated_content_size, metadata=None):
     with get_db_connection() as conn:
         cursor = conn.cursor()
-        cursor.execute('''
-            UPDATE generation_statistics 
-            SET generated_scene_count = ?, generated_content_size = ?
-            WHERE session_id = ?
-        ''', (generated_scene_count, generated_content_size, session_id))
+        
+        if metadata:
+            import json
+            metadata_json = json.dumps(metadata, ensure_ascii=False)
+            cursor.execute('''
+                UPDATE generation_statistics 
+                SET generated_scene_count = %s, generated_content_size = %s, metadata = %s
+                WHERE session_id = %s
+            ''', (generated_scene_count, generated_content_size, metadata_json, session_id))
+        else:
+            cursor.execute('''
+                UPDATE generation_statistics 
+                SET generated_scene_count = %s, generated_content_size = %s
+                WHERE session_id = %s
+            ''', (generated_scene_count, generated_content_size, session_id))
         conn.commit()
 
 def get_statistics(session_id=None, username=None, limit=None):
     with get_db_connection() as conn:
-        cursor = conn.cursor()
+        cursor = conn.cursor(pymysql.cursors.DictCursor)
         if session_id:
-            cursor.execute('SELECT * FROM generation_statistics WHERE session_id = ?', (session_id,))
+            cursor.execute('SELECT * FROM generation_statistics WHERE session_id = %s', (session_id,))
             result = cursor.fetchone()
-            return dict(result) if result else None
+            return result
         elif username:
-            query = 'SELECT * FROM generation_statistics WHERE username = ? ORDER BY created_at DESC'
+            query = 'SELECT * FROM generation_statistics WHERE username = %s ORDER BY created_at DESC'
             if limit:
                 query += f' LIMIT {limit}'
             cursor.execute(query, (username,))
-            return [dict(row) for row in cursor.fetchall()]
+            return cursor.fetchall()
         else:
             cursor.execute('SELECT * FROM generation_statistics ORDER BY created_at DESC')
-            return [dict(row) for row in cursor.fetchall()]
+            return cursor.fetchall()
 
 init_db()

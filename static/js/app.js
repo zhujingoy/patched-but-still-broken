@@ -25,6 +25,7 @@ function initializeEventListeners() {
     const historyBtn = document.getElementById('history-btn');
     const backToUploadBtn = document.getElementById('back-to-upload-btn');
     const downloadBtn = document.getElementById('download-btn');
+    const novelTextInput = document.getElementById('novel-text-input');
 
     selectFileBtn.addEventListener('click', () => novelFile.click());
     
@@ -53,10 +54,16 @@ function initializeEventListeners() {
     if (downloadBtn) {
         downloadBtn.addEventListener('click', handleDownload);
     }
+    if (novelTextInput) {
+        novelTextInput.addEventListener('input', handleTextInput);
+    }
 
     audioPlayer.addEventListener('ended', handleAudioEnded);
 
-    // Mark navigation to settings to preserve file state
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.addEventListener('click', () => switchTab(btn.dataset.tab));
+    });
+
     const settingsLink = document.querySelector('a[href="/settings"]');
     if (settingsLink) {
         settingsLink.addEventListener('click', () => {
@@ -98,15 +105,47 @@ function restoreFileInfo() {
     // Button stays disabled until user selects a file again
 }
 
+function switchTab(tabName) {
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.tab === tabName);
+    });
+    
+    document.querySelectorAll('.upload-tab-content').forEach(content => {
+        content.classList.toggle('active', content.id === `${tabName}-${tabName === 'file' ? 'upload' : 'input'}-tab`);
+    });
+    
+    const startBtn = document.getElementById('start-generate-btn');
+    if (tabName === 'file') {
+        const fileInput = document.getElementById('novel-file');
+        startBtn.disabled = !fileInput.files[0];
+    } else {
+        const textInput = document.getElementById('novel-text-input');
+        startBtn.disabled = !textInput.value.trim();
+    }
+}
+
+function handleTextInput() {
+    const textInput = document.getElementById('novel-text-input');
+    const startBtn = document.getElementById('start-generate-btn');
+    startBtn.disabled = !textInput.value.trim();
+}
+
 async function handleStartGenerate() {
     const fileInput = document.getElementById('novel-file');
+    const textInput = document.getElementById('novel-text-input');
     const apiKey = localStorage.getItem('api_key');
     const apiProvider = localStorage.getItem('api_provider') || 'qiniu';
-    const maxScenes = document.getElementById('max-scenes').value;
     const customPrompt = document.getElementById('custom-prompt').value;
-
-    if (!fileInput.files[0]) {
+    
+    const activeTab = document.querySelector('.tab-btn.active').dataset.tab;
+    
+    if (activeTab === 'file' && !fileInput.files[0]) {
         alert('请先选择小说文件');
+        return;
+    }
+    
+    if (activeTab === 'text' && !textInput.value.trim()) {
+        alert('请输入小说内容');
         return;
     }
 
@@ -116,47 +155,159 @@ async function handleStartGenerate() {
         return;
     }
 
-    const enableVideo = document.getElementById('enable-video').checked;
+    let content = '';
     
-    const formData = new FormData();
-    formData.append('novel', fileInput.files[0]);
-    formData.append('api_key', apiKey);
-    formData.append('api_provider', apiProvider);
-    formData.append('enable_video', enableVideo ? 'true' : 'false');
-    if (maxScenes) {
-        formData.append('max_scenes', maxScenes);
-    }
-    if (customPrompt) {
-        formData.append('custom_prompt', customPrompt);
-    }
-
-    document.getElementById('upload-section').classList.add('hidden');
-    document.getElementById('progress-section').classList.remove('hidden');
-
-    try {
-        const response = await fetch('/api/upload', {
-            method: 'POST',
-            credentials: 'include',
-            body: formData
-        });
-
-        const data = await response.json();
+    if (activeTab === 'text') {
+        content = textInput.value.trim();
+        const wordCount = content.length;
         
-        if (response.ok) {
-            currentTaskId = data.task_id;
-            pollStatus();
-        } else {
-            if (response.status === 401) {
-                alert('请先登录');
-                window.location.href = '/login';
-            } else {
-                alert('错误: ' + data.error);
-                resetUploadSection();
+        try {
+            const checkResponse = await fetch('/api/check_payment', {
+                method: 'POST',
+                credentials: 'include',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ word_count: wordCount })
+            });
+            
+            const checkData = await checkResponse.json();
+            
+            if (checkData.requires_payment) {
+                const shouldContinue = await showPaymentDialog(checkData.payment_amount, wordCount);
+                if (!shouldContinue) {
+                    return;
+                }
             }
+            
+            proceedWithTextUpload(content);
+        } catch (error) {
+            alert('检查付费状态失败: ' + error.message);
         }
-    } catch (error) {
-        alert('上传失败: ' + error.message);
-        resetUploadSection();
+        return;
+    }
+    
+    const file = fileInput.files[0];
+    const reader = new FileReader();
+    
+    reader.onload = async function(e) {
+        content = e.target.result;
+        const wordCount = content.length;
+        
+        try {
+            const checkResponse = await fetch('/api/check_payment', {
+                method: 'POST',
+                credentials: 'include',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ word_count: wordCount })
+            });
+            
+            const checkData = await checkResponse.json();
+            
+            if (checkData.requires_payment) {
+                const shouldContinue = await showPaymentDialog(checkData.payment_amount, wordCount);
+                if (!shouldContinue) {
+                    return;
+                }
+            }
+            
+            proceedWithFileUpload();
+        } catch (error) {
+            alert('检查付费状态失败: ' + error.message);
+        }
+    };
+    
+    reader.readAsText(file);
+    
+    async function proceedWithTextUpload(textContent) {
+        const enableVideo = document.getElementById('enable-video').checked;
+        const useStoryboard = document.getElementById('use-storyboard').checked;
+        
+        const formData = new FormData();
+        const blob = new Blob([textContent], { type: 'text/plain' });
+        formData.append('novel', blob, 'novel.txt');
+        formData.append('api_key', apiKey);
+        formData.append('api_provider', apiProvider);
+        formData.append('enable_video', enableVideo ? 'true' : 'false');
+        formData.append('use_storyboard', useStoryboard ? 'true' : 'false');
+        if (customPrompt) {
+            formData.append('custom_prompt', customPrompt);
+        }
+
+        document.getElementById('upload-section').classList.add('hidden');
+        document.getElementById('progress-section').classList.remove('hidden');
+
+        try {
+            const response = await fetch('/api/upload', {
+                method: 'POST',
+                credentials: 'include',
+                body: formData
+            });
+
+            const data = await response.json();
+            
+            if (response.ok) {
+                currentTaskId = data.task_id;
+                pollStatus();
+            } else {
+                if (response.status === 401) {
+                    alert('请先登录');
+                    window.location.href = '/login';
+                } else {
+                    alert('错误: ' + data.error);
+                    resetUploadSection();
+                }
+            }
+        } catch (error) {
+            alert('上传失败: ' + error.message);
+            resetUploadSection();
+        }
+    }
+    
+    async function proceedWithFileUpload() {
+        const enableVideo = document.getElementById('enable-video').checked;
+        const useStoryboard = document.getElementById('use-storyboard').checked;
+        
+        const formData = new FormData();
+        formData.append('novel', fileInput.files[0]);
+        formData.append('api_key', apiKey);
+        formData.append('api_provider', apiProvider);
+        formData.append('enable_video', enableVideo ? 'true' : 'false');
+        formData.append('use_storyboard', useStoryboard ? 'true' : 'false');
+        if (customPrompt) {
+            formData.append('custom_prompt', customPrompt);
+        }
+
+        document.getElementById('upload-section').classList.add('hidden');
+        document.getElementById('progress-section').classList.remove('hidden');
+
+        try {
+            const response = await fetch('/api/upload', {
+                method: 'POST',
+                credentials: 'include',
+                body: formData
+            });
+
+            const data = await response.json();
+            
+            if (response.ok) {
+                currentTaskId = data.task_id;
+                pollStatus();
+            } else {
+                if (response.status === 401) {
+                    alert('请先登录');
+                    window.location.href = '/login';
+                } else {
+                    alert('错误: ' + data.error);
+                    resetUploadSection();
+                }
+            }
+        } catch (error) {
+            alert('上传失败: ' + error.message);
+            resetUploadSection();
+        }
     }
 }
 
@@ -228,6 +379,8 @@ function displayScene(index) {
     const sceneText = document.getElementById('scene-text');
     const sceneCounter = document.getElementById('scene-counter');
     const sceneCharacters = document.getElementById('scene-characters');
+    const sceneShotType = document.getElementById('scene-shot-type');
+    const sceneMood = document.getElementById('scene-mood');
 
     if (scene.video_url) {
         sceneImage.outerHTML = `<video id="scene-image" src="${scene.video_url}" controls autoplay loop style="width: 100%; height: auto; border-radius: 10px;"></video>`;
@@ -241,10 +394,31 @@ function displayScene(index) {
     }
     
     sceneText.textContent = scene.text;
-    sceneCounter.textContent = `场景 ${index + 1} / ${scenes.length}`;
+    sceneCounter.textContent = `分镜 ${index + 1} / ${scenes.length}`;
+    
+    if (sceneShotType && scene.shot_type) {
+        sceneShotType.textContent = `📷 ${scene.shot_type}`;
+    } else if (sceneShotType) {
+        sceneShotType.textContent = '';
+    }
+    
+    if (sceneMood && scene.mood) {
+        const moodEmojis = {
+            'happy': '😊',
+            'sad': '😢',
+            'tense': '😰',
+            'calm': '😌',
+            'surprised': '😲',
+            'angry': '😠'
+        };
+        const emoji = moodEmojis[scene.mood] || '😐';
+        sceneMood.textContent = `${emoji} ${scene.mood}`;
+    } else if (sceneMood) {
+        sceneMood.textContent = '';
+    }
     
     if (scene.characters && scene.characters.length > 0) {
-        sceneCharacters.textContent = `角色: ${scene.characters.join('、')}`;
+        sceneCharacters.textContent = `👥 ${scene.characters.join('、')}`;
     } else {
         sceneCharacters.textContent = '';
     }
@@ -301,13 +475,14 @@ function navigateScene(direction) {
 }
 
 function handleAudioEnded() {
-    if (isPlaying && currentSceneIndex < scenes.length - 1) {
+    if (currentSceneIndex < scenes.length - 1) {
         navigateScene(1);
         setTimeout(() => {
             startPlayback();
         }, 500);
     } else {
-        pausePlayback();
+        isPlaying = false;
+        document.getElementById('play-pause-btn').textContent = '▶️ 播放';
     }
 }
 
@@ -319,7 +494,7 @@ function handleVolumeChange(event) {
 
 function resetUploadSection() {
     document.getElementById('progress-section').classList.add('hidden');
-    document.getElementById('upload-section').classList.remove('hidden');
+    document.getElementById('upload-section').style.display = 'block';
 }
 
 function returnToHome() {
@@ -339,7 +514,7 @@ function returnToHome() {
         currentSceneIndex = 0;
         
         document.getElementById('player-section').classList.add('hidden');
-        document.getElementById('upload-section').classList.remove('hidden');
+        document.getElementById('upload-section').style.display = 'block';
     }
 }
 
@@ -353,6 +528,7 @@ async function checkAuthentication() {
         if (data.user) {
             document.getElementById('username-display').textContent = `欢迎，${data.user.username}`;
             document.getElementById('logout-btn').style.display = 'inline-block';
+            document.getElementById('upload-section').style.display = 'block';
         } else {
             window.location.href = '/login';
         }
@@ -479,4 +655,87 @@ async function handleDownload() {
     } catch (error) {
         alert('下载失败: ' + error.message);
     }
+}
+
+function showPaymentDialog(paymentAmount, wordCount) {
+    return new Promise((resolve) => {
+        const dialog = document.createElement('div');
+        dialog.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 10000;
+        `;
+        
+        const content = document.createElement('div');
+        content.style.cssText = `
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+            max-width: 500px;
+            text-align: center;
+        `;
+        
+        content.innerHTML = `
+            <h2 style="margin-top: 0; color: #333;">💰 付费提示</h2>
+            <p style="font-size: 16px; color: #666; line-height: 1.6;">
+                您已使用完免费的3次视频生成机会。<br>
+                本次上传的小说共 <strong>${wordCount}</strong> 字。<br>
+                需要支付费用：<strong style="color: #ff6b6b; font-size: 24px;">¥${paymentAmount.toFixed(2)}</strong>
+            </p>
+            <p style="font-size: 14px; color: #999; margin-top: 20px;">
+                💡 提示：当前为内测版本，您可以点击"跳过"按钮继续使用
+            </p>
+            <div style="margin-top: 30px; display: flex; gap: 15px; justify-content: center;">
+                <button id="payment-skip-btn" style="
+                    padding: 12px 30px;
+                    background: #28a745;
+                    color: white;
+                    border: none;
+                    border-radius: 5px;
+                    font-size: 16px;
+                    cursor: pointer;
+                    transition: background 0.3s;
+                ">跳过（内测版本）</button>
+                <button id="payment-cancel-btn" style="
+                    padding: 12px 30px;
+                    background: #dc3545;
+                    color: white;
+                    border: none;
+                    border-radius: 5px;
+                    font-size: 16px;
+                    cursor: pointer;
+                    transition: background 0.3s;
+                ">取消</button>
+            </div>
+        `;
+        
+        dialog.appendChild(content);
+        document.body.appendChild(dialog);
+        
+        const skipBtn = content.querySelector('#payment-skip-btn');
+        const cancelBtn = content.querySelector('#payment-cancel-btn');
+        
+        skipBtn.onmouseover = () => skipBtn.style.background = '#218838';
+        skipBtn.onmouseout = () => skipBtn.style.background = '#28a745';
+        cancelBtn.onmouseover = () => cancelBtn.style.background = '#c82333';
+        cancelBtn.onmouseout = () => cancelBtn.style.background = '#dc3545';
+        
+        skipBtn.addEventListener('click', () => {
+            document.body.removeChild(dialog);
+            resolve(true);
+        });
+        
+        cancelBtn.addEventListener('click', () => {
+            document.body.removeChild(dialog);
+            resolve(false);
+        });
+    });
 }

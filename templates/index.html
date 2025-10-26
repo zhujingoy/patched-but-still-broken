@@ -7,20 +7,30 @@
     <link rel="stylesheet" href="/static/css/style.css">
 </head>
 <body>
+    <!-- Top Navigation Bar -->
+    <div class="top-nav">
+        <div class="nav-left">
+            <span id="username-display" class="username-display"></span>
+            <button id="logout-btn" class="nav-btn" style="display: none;">退出登录</button>
+            <a href="/settings" class="nav-btn" style="text-decoration: none;">⚙️ 设置</a>
+            <button id="history-btn" class="nav-btn">📜 历史</button>
+        </div>
+        <div class="nav-right">
+            <div class="qr-code-mini">
+                <img src="/static/qrcode.png" alt="加群二维码">
+                <p>扫码加群</p>
+            </div>
+            <div class="qr-code-mini">
+                <img src="/static/apk_qr.png" alt="手机版下载二维码">
+                <p>手机版扫码下载</p>
+            </div>
+        </div>
+    </div>
+    
     <div class="container">
         <header>
             <h1>📚 小说动漫化系统</h1>
             <p class="subtitle">自动将小说转换为图配文+语音的动漫作品</p>
-            <div style="margin-top: 20px; display: flex; justify-content: space-between; align-items: center;">
-                <div>
-                    <a href="/settings" class="btn btn-primary" style="text-decoration: none; display: inline-block;">⚙️ 设置</a>
-                    <button id="history-btn" class="btn btn-primary" style="margin-left: 10px;">📜 我的历史</button>
-                </div>
-                <div id="user-info" style="display: flex; align-items: center;">
-                    <span id="username-display" style="margin-right: 10px;"></span>
-                    <button id="logout-btn" class="btn btn-primary" style="display: none;">退出登录</button>
-                </div>
-            </div>
         </header>
 
         <section id="history-section" class="section" style="display: none;">
@@ -32,21 +42,39 @@
 
         <section id="upload-section" class="section">
             <h2>上传小说</h2>
-            <div class="upload-area">
-                <input type="file" id="novel-file" accept=".txt" style="display: none;">
-                <button id="select-file-btn" class="btn btn-primary">选择小说文件 (.txt)</button>
-                <div id="file-info" class="file-info"></div>
+            <div class="upload-tabs">
+                <button class="tab-btn active" data-tab="file">📁 文件上传</button>
+                <button class="tab-btn" data-tab="text">✍️ 文本输入</button>
+            </div>
+            
+            <div id="file-upload-tab" class="upload-tab-content active">
+                <div class="upload-area">
+                    <input type="file" id="novel-file" accept=".txt" style="display: none;">
+                    <button id="select-file-btn" class="btn btn-primary">选择小说文件 (.txt)</button>
+                    <div id="file-info" class="file-info"></div>
+                </div>
+            </div>
+            
+            <div id="text-input-tab" class="upload-tab-content">
+                <div class="text-input-area">
+                    <label for="novel-text-input">输入小说内容:</label>
+                    <textarea id="novel-text-input" rows="10" placeholder="在这里粘贴或输入小说内容..." style="width: 100%; padding: 12px; border: 2px solid #ddd; border-radius: 8px; font-size: 1em; font-family: inherit; resize: vertical;"></textarea>
+                    <small style="color: #666; margin-top: 5px; display: block;">输入小说文本后可以直接生成漫画</small>
+                </div>
             </div>
             
             <div class="settings">
                 <div class="setting-item">
-                    <label for="max-scenes">最大场景数 (可选):</label>
-                    <input type="number" id="max-scenes" min="1" placeholder="留空生成全部">
-                </div>
-                <div class="setting-item">
                     <label for="custom-prompt">自定义提示词 (可选):</label>
                     <textarea id="custom-prompt" rows="4" placeholder="例如: anime style, vibrant colors, detailed background...\n留空使用默认提示词" style="width: 100%; padding: 12px; border: 2px solid #ddd; border-radius: 8px; font-size: 1em; font-family: inherit; resize: vertical;"></textarea>
                     <small style="color: #666; margin-top: 5px;">输入自定义提示词来控制 AI 生成的图片风格</small>
+                </div>
+                <div class="setting-item">
+                    <label for="use-storyboard">
+                        <input type="checkbox" id="use-storyboard" checked style="width: auto; margin-right: 8px;">
+                        启用分镜模式（推荐）
+                    </label>
+                    <small style="color: #666; margin-top: 5px; display: block;">使用AI生成专业的漫画分镜脚本，包含不同镜头类型（特写、中景、全景等），提供更好的视觉叙事效果</small>
                 </div>
                 <div class="setting-item">
                     <label for="enable-video">
@@ -83,6 +111,8 @@
                     </div>
                     <div class="scene-info">
                         <span id="scene-counter">场景 0 / 0</span>
+                        <span id="scene-shot-type" style="margin-left: 20px; color: #666;"></span>
+                        <span id="scene-mood" style="margin-left: 20px; color: #666;"></span>
                         <span id="scene-characters"></span>
                     </div>
                 </div>
