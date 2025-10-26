@@ -54,12 +54,8 @@ class SceneComposer:
         
         if scene_image:
             output_image = os.path.join(scene_folder, "scene.png")
-            
-            self.image_gen.create_text_overlay(
-                scene_image,
-                scene_text,
-                output_image
-            )
+            import shutil
+            shutil.copy(scene_image, output_image)
         else:
             output_image = None
         
@@ -169,12 +165,8 @@ class SceneComposer:
         output_image = None
         if scene_image:
             output_image = os.path.join(scene_folder, "scene.png")
-            
-            self.image_gen.create_text_overlay(
-                scene_image,
-                scene_text,
-                output_image
-            )
+            import shutil
+            shutil.copy(scene_image, output_image)
         
         audio_file = self.tts_gen.generate_speech_for_scene(scene_text, scene_index)
         
@@ -303,19 +295,14 @@ class SceneComposer:
         output_image = None
         if scene_image:
             output_image = os.path.join(scene_folder, "scene.png")
-            
-            self.image_gen.create_text_overlay(
-                scene_image,
-                scene_text,
-                output_image
-            )
+            import shutil
+            shutil.copy(scene_image, output_image)
         
         audio_file = self.tts_gen.generate_speech_for_scene(scene_text, scene_index)
         
         if audio_file:
             output_audio = os.path.join(scene_folder, "narration.mp3")
             if audio_file != output_audio:
-                import shutil
                 shutil.copy(audio_file, output_audio)
         else:
             output_audio = None

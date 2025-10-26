@@ -8,10 +8,10 @@ from gevent.pywsgi import WSGIServer
 
 from werkzeug.utils import secure_filename
 from anime_generator import AnimeGenerator
-
+from video_merger import VideoMerger
 
 from common import get_base_dir
-from flask import Flask, render_template, request, jsonify, send_from_directory, session, redirect, url_for
+from flask import Flask, render_template, request, jsonify, send_from_directory, session, redirect, url_for, send_file
 from flask_cors import CORS
 from statistics_db import insert_statistics, update_generation_stats, get_statistics
 from user_auth import register_user, login_user, get_user_by_id, get_user_video_count, increment_user_video_count
@@ -50,6 +50,7 @@ class FlaskAppWrapper:
         self.app_.add_url_rule('/api/status/<task_id>', view_func=self.get_status, methods=['GET'])
         self.app_.add_url_rule('/api/scenes/<task_id>', view_func=self.get_scenes, methods=['GET'])
         self.app_.add_url_rule('/api/file/<path:filepath>', view_func=self.serve_file, methods=['GET'])
+        self.app_.add_url_rule('/api/download/<task_id>', view_func=self.download_content, methods=['GET'])
         self.app_.add_url_rule('/get_apk', view_func=self.get_apk, methods=['GET'])
 
     def get_apk(self):
@@ -321,6 +322,60 @@ class FlaskAppWrapper:
         filename = os.path.basename(filepath)
         return send_from_directory(directory, filename)
     
+    def download_content(self, task_id):
+        metadata = None
+        
+        if task_id in self.generation_status_:
+            status = self.generation_status_[task_id]
+            if status['status'] != 'completed':
+                return jsonify({'error': '任务未完成'}), 400
+            metadata = status.get('metadata', {})
+        else:
+            db_record = get_statistics(session_id=task_id)
+            if not db_record:
+                return jsonify({'error': '任务不存在'}), 404
+            
+            if not db_record.get('metadata'):
+                return jsonify({'error': '任务未完成或元数据不存在'}), 400
+            
+            metadata = json.loads(db_record['metadata'])
+        
+        scenes = metadata.get('scenes', [])
+        
+        if not scenes:
+            return jsonify({'error': '没有可下载的内容'}), 404
+        
+        try:
+            scene_folders = [scene_info['folder'] for scene_info in scenes]
+            
+            output_video_path = os.path.join('temp_videos', f'merged_{task_id}.mp4')
+            os.makedirs('temp_videos', exist_ok=True)
+            
+            if os.path.exists(output_video_path):
+                return send_file(
+                    output_video_path,
+                    mimetype='video/mp4',
+                    as_attachment=True,
+                    download_name=f'anime_{task_id}.mp4'
+                )
+            
+            merger = VideoMerger()
+            success = merger.merge_scene_videos(scene_folders, output_video_path)
+            
+            if not success:
+                return jsonify({'error': '视频合并失败'}), 500
+            
+            return send_file(
+                output_video_path,
+                mimetype='video/mp4',
+                as_attachment=True,
+                download_name=f'anime_{task_id}.mp4'
+            )
+            
+        except Exception as e:
+            print(f"下载失败: {e}")
+            return jsonify({'error': f'下载失败: {str(e)}'}), 500
+    
     def run(self, debug=True, host='0.0.0.0'):
         self.app_.run(debug=debug, host=host, port=self.port_)
 
@@ -328,7 +383,6 @@ class FlaskAppWrapper:
 def main(port):
     server = FlaskAppWrapper('novel_to_anime', port=port)
     WSGIServer(('0.0.0.0', server.port_), server.app_).serve_forever()
-
 
 if __name__ == '__main__':
     port = 80 if sys.platform == 'linux' else 5000
