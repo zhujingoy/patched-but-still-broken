@@ -68,16 +68,6 @@ body {
     transform: translateY(-1px);
 }
 
-.nav-btn.upload-toggle {
-    background: #48bb78;
-    font-size: 20px;
-    padding: 8px 12px;
-}
-
-.nav-btn.upload-toggle:hover {
-    background: #38a169;
-}
-
 .qr-code-mini {
     text-align: center;
     background-color: white;

@@ -24,7 +24,6 @@ function initializeEventListeners() {
     const logoutBtn = document.getElementById('logout-btn');
     const historyBtn = document.getElementById('history-btn');
     const backToUploadBtn = document.getElementById('back-to-upload-btn');
-    const uploadToggleBtn = document.getElementById('upload-toggle-btn');
     const novelTextInput = document.getElementById('novel-text-input');
 
     selectFileBtn.addEventListener('click', () => novelFile.click());
@@ -50,9 +49,6 @@ function initializeEventListeners() {
             document.getElementById('history-section').style.display = 'none';
             document.getElementById('upload-section').style.display = 'block';
         });
-    }
-    if (uploadToggleBtn) {
-        uploadToggleBtn.addEventListener('click', toggleUploadSection);
     }
     if (novelTextInput) {
         novelTextInput.addEventListener('input', handleTextInput);
@@ -128,11 +124,6 @@ function handleTextInput() {
     const textInput = document.getElementById('novel-text-input');
     const startBtn = document.getElementById('start-generate-btn');
     startBtn.disabled = !textInput.value.trim();
-}
-
-function toggleUploadSection() {
-    const uploadSection = document.getElementById('upload-section');
-    uploadSection.style.display = uploadSection.style.display === 'none' ? 'block' : 'none';
 }
 
 async function handleStartGenerate() {
