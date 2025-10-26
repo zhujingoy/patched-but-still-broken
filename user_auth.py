@@ -1,15 +1,13 @@
-import sqlite3
+import pymysql
 import hashlib
 import os
 from datetime import datetime
 from contextlib import contextmanager
-
-DB_PATH = 'generation_statistics.db'
+from db_config import DB_CONFIG
 
 @contextmanager
 def get_db_connection():
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
+    conn = pymysql.connect(**DB_CONFIG)
     try:
         yield conn
     finally:
@@ -20,20 +18,14 @@ def init_user_db():
         cursor = conn.cursor()
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS users (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                username TEXT UNIQUE NOT NULL,
-                password_hash TEXT NOT NULL,
-                video_generation_count INTEGER DEFAULT 0,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                username VARCHAR(255) UNIQUE NOT NULL,
+                password_hash VARCHAR(255) NOT NULL,
+                video_generation_count INT DEFAULT 0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                INDEX idx_username (username)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
         ''')
-        
-        cursor.execute("PRAGMA table_info(users)")
-        columns = [column[1] for column in cursor.fetchall()]
-        
-        if 'video_generation_count' not in columns:
-            cursor.execute('ALTER TABLE users ADD COLUMN video_generation_count INTEGER DEFAULT 0')
-        
         conn.commit()
 
 def hash_password(password):
@@ -62,11 +54,11 @@ def register_user(username, password):
     try:
         with get_db_connection() as conn:
             cursor = conn.cursor()
-            cursor.execute('INSERT INTO users (username, password_hash) VALUES (?, ?)',
+            cursor.execute('INSERT INTO users (username, password_hash) VALUES (%s, %s)',
                          (username, password_hash))
             conn.commit()
             return True, '注册成功'
-    except sqlite3.IntegrityError:
+    except pymysql.IntegrityError:
         return False, '用户名已存在'
     except Exception as e:
         return False, f'注册失败: {str(e)}'
@@ -77,8 +69,8 @@ def login_user(username, password):
     
     try:
         with get_db_connection() as conn:
-            cursor = conn.cursor()
-            cursor.execute('SELECT id, username, password_hash FROM users WHERE username = ?',
+            cursor = conn.cursor(pymysql.cursors.DictCursor)
+            cursor.execute('SELECT id, username, password_hash FROM users WHERE username = %s',
                          (username,))
             user = cursor.fetchone()
             
@@ -92,18 +84,18 @@ def login_user(username, password):
 def get_user_by_id(user_id):
     try:
         with get_db_connection() as conn:
-            cursor = conn.cursor()
-            cursor.execute('SELECT id, username, created_at, video_generation_count FROM users WHERE id = ?', (user_id,))
+            cursor = conn.cursor(pymysql.cursors.DictCursor)
+            cursor.execute('SELECT id, username, created_at, video_generation_count FROM users WHERE id = %s', (user_id,))
             user = cursor.fetchone()
-            return dict(user) if user else None
+            return user
     except Exception as e:
         return None
 
 def get_user_video_count(user_id):
     try:
         with get_db_connection() as conn:
-            cursor = conn.cursor()
-            cursor.execute('SELECT video_generation_count FROM users WHERE id = ?', (user_id,))
+            cursor = conn.cursor(pymysql.cursors.DictCursor)
+            cursor.execute('SELECT video_generation_count FROM users WHERE id = %s', (user_id,))
             result = cursor.fetchone()
             return result['video_generation_count'] if result else 0
     except Exception as e:
@@ -113,7 +105,7 @@ def increment_user_video_count(user_id):
     try:
         with get_db_connection() as conn:
             cursor = conn.cursor()
-            cursor.execute('UPDATE users SET video_generation_count = video_generation_count + 1 WHERE id = ?', (user_id,))
+            cursor.execute('UPDATE users SET video_generation_count = video_generation_count + 1 WHERE id = %s', (user_id,))
             conn.commit()
             return True
     except Exception as e:

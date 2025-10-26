@@ -8,6 +8,7 @@ from werkzeug.utils import secure_filename
 from anime_generator import AnimeGenerator
 
 import jieba
+from common import get_base_dir
 from flask import Flask, render_template, request, jsonify, send_from_directory, session, redirect, url_for
 from flask_cors import CORS
 from statistics_db import insert_statistics, update_generation_stats, get_statistics
@@ -18,9 +19,8 @@ app = Flask(__name__, static_folder='static', template_folder='templates')
 app.secret_key = os.urandom(24)
 CORS(app, supports_credentials=True)
 
-UPLOAD_FOLDER = 'uploads'
+UPLOAD_FOLDER = os.path.join(get_base_dir(), 'uploads')
 ALLOWED_EXTENSIONS = {'txt'}
-
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
 
@@ -31,7 +31,7 @@ generation_status = {}
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
-def generate_anime_async(task_id, novel_path, max_scenes, api_key, provider='qiniu', custom_prompt=None, enable_video=False, use_ai_analysis=True, use_storyboard=True):
+def generate_anime_async(task_id, novel_path, max_scenes, api_key, provider='qiniu', custom_prompt=None, enable_video=False, use_ai_analysis=True, use_storyboard=True, user_id=None):
     def update_status(progress, message):
         generation_status[task_id] = {
             'status': 'processing',
@@ -72,6 +72,9 @@ def generate_anime_async(task_id, novel_path, max_scenes, api_key, provider='qin
                         generated_content_size += os.path.getsize(file_path)
         
         update_generation_stats(task_id, generated_scene_count, generated_content_size, metadata)
+        
+        if user_id:
+            increment_user_video_count(user_id)
         
         generation_status[task_id] = {
             'status': 'completed',
@@ -228,9 +231,10 @@ def upload_novel():
         if not api_key:
             return jsonify({'error': '需要提供 API Key'}), 400
         
+        user_id = session.get('user_id')
         thread = threading.Thread(
             target=generate_anime_async,
-            args=(task_id, file_path, max_scenes, api_key, provider, custom_prompt, enable_video, use_ai_analysis, use_storyboard)
+            args=(task_id, file_path, max_scenes, api_key, provider, custom_prompt, enable_video, use_ai_analysis, use_storyboard, user_id)
         )
         thread.start()
         

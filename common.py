@@ -1,3 +1,4 @@
+import os
 import sys
 import getpass
 
@@ -9,9 +10,10 @@ def get_base_dir():
     elif sys.platform == 'darwin':
         if user_name == 'zhouting':
             base_dir = '/Users/zhouting/data_for_2025_1024_game'
-        else:
-            base_dir = '/Users/chenyang/plot_domain_traffic_data'  # 宇飞改下
+        elif user_name == 'lyf':
+            base_dir = '/Users/lyf/data_for_2025_1024_game'  # 宇飞改下
     if sys.platform.startswith('win'):
-        base_dir = 'C://'  # 朱晶改下
+        base_dir = 'C://data_for_2025_1024_game'  # 朱晶改下
 
+    os.makedirs(base_dir, exist_ok=True)
     return base_dir
