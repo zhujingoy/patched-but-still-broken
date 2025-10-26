@@ -122,9 +122,11 @@ class AnimeGenerator:
                 )
                 
                 storyboard_panels = storyboard_result.get('storyboard', [])
-                print(f"分镜生成完成，共 {len(storyboard_panels)} 个分镜")
+                success_count = storyboard_result.get('success_count', 0)
+                failure_count = storyboard_result.get('failure_count', 0)
+                print(f"分镜生成完成，共 {len(storyboard_panels)} 个分镜（成功: {success_count}, 失败: {failure_count}）")
                 if progress_callback:
-                    progress_callback(50, f'分镜生成完成：共 {len(storyboard_panels)} 个分镜')
+                    progress_callback(50, f'分镜生成完成：共 {len(storyboard_panels)} 个分镜（成功: {success_count}, 失败: {failure_count}）')
                 
                 print("\n=== 第四阶段：根据分镜生成画面 ===")
                 panels_to_process = storyboard_panels
@@ -209,6 +211,13 @@ class AnimeGenerator:
         if self.use_ai_analysis and self.novel_analyzer and 'character_portraits' in locals():
             character_portraits_data = character_portraits
         
+        storyboard_stats = {}
+        if use_storyboard and 'success_count' in locals():
+            storyboard_stats = {
+                'storyboard_success_count': success_count,
+                'storyboard_failure_count': failure_count
+            }
+        
         metadata = {
             'novel_path': novel_path,
             'total_scenes': len(all_scenes),
@@ -222,7 +231,8 @@ class AnimeGenerator:
                     'characters': s['characters']
                 }
                 for s in all_scenes
-            ]
+            ],
+            **storyboard_stats
         }
         
         self._save_project_metadata(metadata)
