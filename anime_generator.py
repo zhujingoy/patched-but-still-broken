@@ -13,13 +13,14 @@ import json
 
 
 class AnimeGenerator:
-    def __init__(self, openai_api_key: str = None, provider: str = "qiniu", custom_prompt: str = None, enable_video: bool = False, use_ai_analysis: bool = True):
+    def __init__(self, openai_api_key: str = None, provider: str = "qiniu", custom_prompt: str = None, enable_video: bool = False, use_ai_analysis: bool = True, session_id: str = None):
         load_dotenv()
         
         self.api_key = openai_api_key or os.getenv('OPENAI_API_KEY')
         if not self.api_key:
             raise ValueError("需要提供 API Key")
         
+        self.session_id = session_id
         self.char_mgr = CharacterManager()
         self.image_gen = ImageGenerator(self.api_key, provider=provider, custom_prompt=custom_prompt)
         self.tts_gen = TTSGenerator()
@@ -34,9 +35,12 @@ class AnimeGenerator:
             self.novel_analyzer = NovelAnalyzer(self.api_key)
             self.storyboard_gen = StoryboardGenerator(self.api_key)
         
-        self.scene_composer = SceneComposer(self.image_gen, self.tts_gen, self.char_mgr, self.video_gen)
+        self.scene_composer = SceneComposer(self.image_gen, self.tts_gen, self.char_mgr, self.video_gen, session_id=session_id)
         
-        self.output_dir = "anime_output"
+        if session_id:
+            self.output_dir = os.path.join("anime_output", session_id)
+        else:
+            self.output_dir = "anime_output"
         os.makedirs(self.output_dir, exist_ok=True)
         self.use_ai_analysis = use_ai_analysis
     
@@ -254,6 +258,7 @@ class AnimeGenerator:
 
 def main():
     import argparse
+    import uuid
     
     parser = argparse.ArgumentParser(description='从小说生成动漫（图配文+声音）')
     parser.add_argument('novel_path', help='小说文本文件路径')
@@ -261,11 +266,16 @@ def main():
                        help='最大生成场景数（默认：全部）')
     parser.add_argument('--api-key', default=None, 
                        help='OpenAI API Key（也可通过 .env 文件配置）')
+    parser.add_argument('--session-id', default=None,
+                       help='会话ID（用于隔离不同生成任务，默认自动生成）')
     
     args = parser.parse_args()
     
+    session_id = args.session_id or str(uuid.uuid4())
+    print(f"会话ID：{session_id}")
+    
     try:
-        generator = AnimeGenerator(openai_api_key=args.api_key)
+        generator = AnimeGenerator(openai_api_key=args.api_key, session_id=session_id)
         generator.generate_from_novel(args.novel_path, max_scenes=args.max_scenes)
     except Exception as e:
         print(f"错误：{e}")

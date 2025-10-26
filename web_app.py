@@ -47,7 +47,8 @@ def generate_anime_async(task_id, novel_path, max_scenes, api_key, provider='qin
             provider=provider, 
             custom_prompt=custom_prompt, 
             enable_video=enable_video,
-            use_ai_analysis=use_ai_analysis
+            use_ai_analysis=use_ai_analysis,
+            session_id=task_id
         )
         
         update_status(5, '开始分析小说内容...')

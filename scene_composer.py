@@ -10,12 +10,17 @@ class SceneComposer:
     def __init__(self, image_generator: ImageGenerator, 
                  tts_generator: TTSGenerator,
                  character_manager: CharacterManager,
-                 video_generator = None):
+                 video_generator = None,
+                 session_id: str = None):
         self.image_gen = image_generator
         self.tts_gen = tts_generator
         self.char_mgr = character_manager
         self.video_gen = video_generator
-        self.output_dir = "output_scenes"
+        self.session_id = session_id
+        if session_id:
+            self.output_dir = os.path.join("output_scenes", session_id)
+        else:
+            self.output_dir = "output_scenes"
         os.makedirs(self.output_dir, exist_ok=True)
     
     def create_scene(self, scene_index: int, scene_text: str, 
