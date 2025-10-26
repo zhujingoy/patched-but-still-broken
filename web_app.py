@@ -9,7 +9,7 @@ from gevent.pywsgi import WSGIServer
 from werkzeug.utils import secure_filename
 from anime_generator import AnimeGenerator
 
-import jieba
+
 from common import get_base_dir
 from flask import Flask, render_template, request, jsonify, send_from_directory, session, redirect, url_for
 from flask_cors import CORS
@@ -50,7 +50,11 @@ class FlaskAppWrapper:
         self.app_.add_url_rule('/api/status/<task_id>', view_func=self.get_status, methods=['GET'])
         self.app_.add_url_rule('/api/scenes/<task_id>', view_func=self.get_scenes, methods=['GET'])
         self.app_.add_url_rule('/api/file/<path:filepath>', view_func=self.serve_file, methods=['GET'])
-    
+        self.app_.add_url_rule('/get_apk', view_func=self.get_apk, methods=['GET'])
+
+    def get_apk(self):
+        return send_from_directory(os.path.join(get_base_dir(), 'apk_dir'), 'novel2video_release.apk', mimetype='application/vnd.android.package-archive')
+
     def _allowed_file(self, filename):
         return '.' in filename and filename.rsplit('.', 1)[1].lower() in self.allowed_extensions_
     
