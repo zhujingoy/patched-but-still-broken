@@ -3,6 +3,8 @@ let scenes = [];
 let currentSceneIndex = 0;
 let isPlaying = false;
 let audioPlayer = null;
+let videoPlayer = null;
+let isVideoMode = false;
 
 document.addEventListener('DOMContentLoaded', function() {
     audioPlayer = document.getElementById('audio-player');
@@ -26,6 +28,11 @@ function initializeEventListeners() {
     const backToUploadBtn = document.getElementById('back-to-upload-btn');
     const downloadBtn = document.getElementById('download-btn');
     const novelTextInput = document.getElementById('novel-text-input');
+    const singleViewBtn = document.getElementById('single-view-btn');
+    const listViewBtn = document.getElementById('list-view-btn');
+    const playAllVideosBtn = document.getElementById('play-all-videos-btn');
+    const downloadBtnList = document.getElementById('download-btn-list');
+    const returnHomeBtnList = document.getElementById('return-home-btn-list');
 
     selectFileBtn.addEventListener('click', () => novelFile.click());
     
@@ -56,6 +63,21 @@ function initializeEventListeners() {
     }
     if (novelTextInput) {
         novelTextInput.addEventListener('input', handleTextInput);
+    }
+    if (singleViewBtn) {
+        singleViewBtn.addEventListener('click', () => switchView('single'));
+    }
+    if (listViewBtn) {
+        listViewBtn.addEventListener('click', () => switchView('list'));
+    }
+    if (playAllVideosBtn) {
+        playAllVideosBtn.addEventListener('click', playAllVideos);
+    }
+    if (downloadBtnList) {
+        downloadBtnList.addEventListener('click', handleDownload);
+    }
+    if (returnHomeBtnList) {
+        returnHomeBtnList.addEventListener('click', returnToHome);
     }
 
     audioPlayer.addEventListener('ended', handleAudioEnded);
@@ -383,14 +405,37 @@ function displayScene(index) {
     const sceneMood = document.getElementById('scene-mood');
 
     if (scene.video_url) {
-        sceneImage.outerHTML = `<video id="scene-image" src="${scene.video_url}" controls autoplay loop style="width: 100%; height: auto; border-radius: 10px;"></video>`;
+        if (document.getElementById('scene-image').tagName !== 'VIDEO') {
+            const imageWrapper = document.querySelector('.scene-image-wrapper');
+            imageWrapper.innerHTML = '<video id="scene-image" controls style="width: 100%; height: auto; border-radius: 10px;"></video>';
+        }
+        const videoElement = document.getElementById('scene-image');
+        videoElement.src = scene.video_url;
+        videoPlayer = videoElement;
+        isVideoMode = true;
+        
+        videoElement.onended = function() {
+            if (isPlaying && currentSceneIndex < scenes.length - 1) {
+                navigateScene(1);
+            } else if (currentSceneIndex >= scenes.length - 1) {
+                isPlaying = false;
+                document.getElementById('play-pause-btn').textContent = '▶️ 播放';
+            }
+        };
+        
+        if (isPlaying) {
+            videoElement.play();
+        }
     } else {
         if (document.getElementById('scene-image').tagName === 'VIDEO') {
             const imageWrapper = document.querySelector('.scene-image-wrapper');
             imageWrapper.innerHTML = '<img id="scene-image" src="" alt="场景图片">';
         }
         
-        sceneImage.src = scene.image_url;
+        const imgElement = document.getElementById('scene-image');
+        imgElement.src = scene.image_url;
+        videoPlayer = null;
+        isVideoMode = false;
     }
     
     sceneText.textContent = scene.text;
@@ -423,7 +468,9 @@ function displayScene(index) {
         sceneCharacters.textContent = '';
     }
 
-    audioPlayer.src = scene.audio_url;
+    if (!isVideoMode) {
+        audioPlayer.src = scene.audio_url;
+    }
 
     const sceneCard = document.getElementById('scene-card');
     sceneCard.style.animation = 'none';
@@ -445,23 +492,40 @@ function startPlayback() {
     isPlaying = true;
     document.getElementById('play-pause-btn').textContent = '⏸ 暂停';
     
-    audioPlayer.play().catch(error => {
-        console.error('播放失败:', error);
-        isPlaying = false;
-        document.getElementById('play-pause-btn').textContent = '▶️ 播放';
-    });
+    if (isVideoMode && videoPlayer) {
+        videoPlayer.play().catch(error => {
+            console.error('视频播放失败:', error);
+            isPlaying = false;
+            document.getElementById('play-pause-btn').textContent = '▶️ 播放';
+        });
+    } else {
+        audioPlayer.play().catch(error => {
+            console.error('音频播放失败:', error);
+            isPlaying = false;
+            document.getElementById('play-pause-btn').textContent = '▶️ 播放';
+        });
+    }
 }
 
 function pausePlayback() {
     isPlaying = false;
-    audioPlayer.pause();
+    if (isVideoMode && videoPlayer) {
+        videoPlayer.pause();
+    } else {
+        audioPlayer.pause();
+    }
     document.getElementById('play-pause-btn').textContent = '▶️ 播放';
 }
 
 function stopPlayback() {
     isPlaying = false;
-    audioPlayer.pause();
-    audioPlayer.currentTime = 0;
+    if (isVideoMode && videoPlayer) {
+        videoPlayer.pause();
+        videoPlayer.currentTime = 0;
+    } else {
+        audioPlayer.pause();
+        audioPlayer.currentTime = 0;
+    }
     document.getElementById('play-pause-btn').textContent = '▶️ 播放';
 }
 
@@ -816,4 +880,95 @@ function showPaymentDialog(paymentAmount, wordCount) {
             resolve(false);
         });
     });
+}
+
+function switchView(viewType) {
+    const singleView = document.getElementById('single-view');
+    const listView = document.getElementById('list-view');
+    const singleViewBtn = document.getElementById('single-view-btn');
+    const listViewBtn = document.getElementById('list-view-btn');
+    
+    if (viewType === 'single') {
+        singleView.style.display = 'block';
+        listView.style.display = 'none';
+        singleViewBtn.classList.add('active');
+        listViewBtn.classList.remove('active');
+    } else if (viewType === 'list') {
+        singleView.style.display = 'none';
+        listView.style.display = 'block';
+        singleViewBtn.classList.remove('active');
+        listViewBtn.classList.add('active');
+        renderVideoList();
+    }
+}
+
+function renderVideoList() {
+    const container = document.getElementById('video-list-container');
+    container.innerHTML = '';
+    
+    const videosWithIndex = scenes
+        .map((scene, index) => ({ scene, index }))
+        .filter(item => item.scene.video_url);
+    
+    if (videosWithIndex.length === 0) {
+        container.innerHTML = '<p style="grid-column: 1/-1; text-align: center; color: #999;">没有视频可显示。请确保在生成时启用了视频生成功能。</p>';
+        return;
+    }
+    
+    videosWithIndex.forEach(({ scene, index }) => {
+        const card = document.createElement('div');
+        card.style.cssText = `
+            background: white;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            transition: transform 0.2s;
+        `;
+        card.onmouseover = () => card.style.transform = 'translateY(-5px)';
+        card.onmouseout = () => card.style.transform = 'translateY(0)';
+        
+        card.innerHTML = `
+            <video controls style="width: 100%; height: 200px; object-fit: cover;" preload="metadata">
+                <source src="${scene.video_url}" type="video/mp4">
+            </video>
+            <div style="padding: 15px;">
+                <h4 style="margin: 0 0 10px 0; color: #333;">分镜 ${index + 1}</h4>
+                <p style="margin: 0; color: #666; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${scene.text || '无描述'}</p>
+                ${scene.shot_type ? `<p style="margin: 5px 0 0 0; color: #999; font-size: 12px;">📷 ${scene.shot_type}</p>` : ''}
+                <button onclick="playVideoFromList(${index})" style="
+                    margin-top: 10px;
+                    padding: 8px 16px;
+                    background: #007bff;
+                    color: white;
+                    border: none;
+                    border-radius: 5px;
+                    cursor: pointer;
+                    width: 100%;
+                ">在单个播放器中查看</button>
+            </div>
+        `;
+        
+        container.appendChild(card);
+    });
+}
+
+function playVideoFromList(index) {
+    switchView('single');
+    displayScene(index);
+}
+
+function playAllVideos() {
+    const videosWithIndex = scenes
+        .map((scene, index) => ({ scene, index }))
+        .filter(item => item.scene.video_url);
+    
+    if (videosWithIndex.length === 0) {
+        alert('没有视频可播放');
+        return;
+    }
+    
+    switchView('single');
+    displayScene(videosWithIndex[0].index);
+    isPlaying = true;
+    startPlayback();
 }
