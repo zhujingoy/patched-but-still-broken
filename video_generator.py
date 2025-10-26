@@ -18,7 +18,8 @@ class VideoGenerator:
                       image_path: Optional[str] = None,
                       duration: int = 8,
                       aspect_ratio: str = "16:9",
-                      default_keywords: str = None) -> Optional[str]:
+                      default_keywords: str = None,
+                      max_retries: int = 3) -> Optional[str]:
         if default_keywords:
             full_prompt = f"{prompt}, {default_keywords}"
         else:
@@ -31,28 +32,55 @@ class VideoGenerator:
             print(f"使用缓存的视频: {cache_path}")
             return cache_path
         
-        try:
-            task_id = self._create_video_task(full_prompt, image_path, duration, aspect_ratio)
-            
-            if not task_id:
+        for attempt in range(max_retries):
+            try:
+                print(f"尝试生成视频 (第 {attempt + 1}/{max_retries} 次)...")
+                task_id = self._create_video_task(full_prompt, image_path, duration, aspect_ratio)
+                
+                if not task_id:
+                    print(f"创建视频任务失败 (第 {attempt + 1}/{max_retries} 次)")
+                    if attempt < max_retries - 1:
+                        print(f"将在 5 秒后重试...")
+                        time.sleep(5)
+                        continue
+                    return None
+                
+                print(f"视频生成任务已创建，任务ID: {task_id}")
+                print("等待视频生成完成...")
+                
+                video_url = self._wait_for_completion(task_id)
+                
+                if not video_url:
+                    print(f"视频生成失败 (第 {attempt + 1}/{max_retries} 次)")
+                    if attempt < max_retries - 1:
+                        print(f"将在 5 秒后重试...")
+                        time.sleep(5)
+                        continue
+                    return None
+                
+                print(f"视频生成完成，正在下载...")
+                download_success = self._download_video(video_url, cache_path)
+                
+                if download_success:
+                    print(f"视频下载成功 (第 {attempt + 1}/{max_retries} 次尝试)")
+                    return cache_path
+                else:
+                    print(f"视频下载失败 (第 {attempt + 1}/{max_retries} 次)")
+                    if attempt < max_retries - 1:
+                        print(f"将在 5 秒后重试...")
+                        time.sleep(5)
+                        continue
+                    return None
+                
+            except Exception as e:
+                print(f"生成视频失败 (第 {attempt + 1}/{max_retries} 次): {e}")
+                if attempt < max_retries - 1:
+                    print(f"将在 5 秒后重试...")
+                    time.sleep(5)
+                    continue
                 return None
-            
-            print(f"视频生成任务已创建，任务ID: {task_id}")
-            print("等待视频生成完成...")
-            
-            video_url = self._wait_for_completion(task_id)
-            
-            if not video_url:
-                return None
-            
-            print(f"视频生成完成，正在下载...")
-            self._download_video(video_url, cache_path)
-            
-            return cache_path
-            
-        except Exception as e:
-            print(f"生成视频失败: {e}")
-            return None
+        
+        return None
     
     def _create_video_task(self, prompt: str, image_path: Optional[str], 
                           duration: int, aspect_ratio: str) -> Optional[str]:
