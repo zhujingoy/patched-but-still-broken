@@ -8,6 +8,7 @@ from werkzeug.utils import secure_filename
 from anime_generator import AnimeGenerator
 
 import jieba
+from common import get_base_dir
 from flask import Flask, render_template, request, jsonify, send_from_directory, session, redirect, url_for
 from flask_cors import CORS
 from statistics_db import insert_statistics, update_generation_stats, get_statistics
@@ -18,9 +19,8 @@ app = Flask(__name__, static_folder='static', template_folder='templates')
 app.secret_key = os.urandom(24)
 CORS(app, supports_credentials=True)
 
-UPLOAD_FOLDER = 'uploads'
+UPLOAD_FOLDER = os.path.join(get_base_dir(), 'uploads')
 ALLOWED_EXTENSIONS = {'txt'}
-
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
 
