@@ -1,29 +1,60 @@
 import unittest
 import sys
 import os
-import tempfile
-import sqlite3
+import pymysql
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 import statistics_db
 
-
 class TestStatisticsDB(unittest.TestCase):
     
     def setUp(self):
-        self.temp_db = tempfile.NamedTemporaryFile(delete=False, suffix='.db')
-        self.temp_db.close()
-        statistics_db.DB_PATH = self.temp_db.name
+        self.test_db_config = {
+            'host': os.getenv('TEST_DB_HOST', '127.0.0.1'),
+            'port': int(os.getenv('TEST_DB_PORT', 3306)),
+            'user': os.getenv('TEST_DB_USER', 'root'),
+            'password': os.getenv('TEST_DB_PASSWORD', ''),
+            'database': os.getenv('TEST_DB_NAME', 'test_appdb'),
+            'charset': 'utf8mb4'
+        }
+        
+        original_config = statistics_db.DB_CONFIG.copy()
+        statistics_db.DB_CONFIG.update(self.test_db_config)
+        
+        try:
+            conn = pymysql.connect(
+                host=self.test_db_config['host'],
+                port=self.test_db_config['port'],
+                user=self.test_db_config['user'],
+                password=self.test_db_config['password'],
+                charset=self.test_db_config['charset']
+            )
+            cursor = conn.cursor()
+            cursor.execute(f"CREATE DATABASE IF NOT EXISTS {self.test_db_config['database']}")
+            conn.close()
+        except Exception as e:
+            statistics_db.DB_CONFIG.update(original_config)
+            self.skipTest(f"Cannot connect to test database: {e}")
+        
         statistics_db.init_db()
+        self._cleanup_test_data()
     
     def tearDown(self):
-        if os.path.exists(self.temp_db.name):
-            os.unlink(self.temp_db.name)
+        self._cleanup_test_data()
+    
+    def _cleanup_test_data(self):
+        try:
+            with statistics_db.get_db_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute("DELETE FROM generation_statistics")
+                conn.commit()
+        except:
+            pass
     
     def test_init_db_creates_table(self):
         with statistics_db.get_db_connection() as conn:
             cursor = conn.cursor()
-            cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='generation_statistics'")
+            cursor.execute("SHOW TABLES LIKE 'generation_statistics'")
             result = cursor.fetchone()
             
             self.assertIsNotNone(result)
@@ -31,10 +62,10 @@ class TestStatisticsDB(unittest.TestCase):
     def test_init_db_table_structure(self):
         with statistics_db.get_db_connection() as conn:
             cursor = conn.cursor()
-            cursor.execute("PRAGMA table_info(generation_statistics)")
+            cursor.execute("DESCRIBE generation_statistics")
             columns = cursor.fetchall()
             
-            column_names = [col[1] for col in columns]
+            column_names = [col[0] for col in columns]
             
             self.assertIn('id', column_names)
             self.assertIn('session_id', column_names)
@@ -87,7 +118,7 @@ class TestStatisticsDB(unittest.TestCase):
         
         with statistics_db.get_db_connection() as conn:
             cursor = conn.cursor()
-            cursor.execute('SELECT generated_scene_count, generated_content_size FROM generation_statistics WHERE session_id = ?', 
+            cursor.execute('SELECT generated_scene_count, generated_content_size FROM generation_statistics WHERE session_id = %s', 
                          ('session-update',))
             result = cursor.fetchone()
             
@@ -99,7 +130,7 @@ class TestStatisticsDB(unittest.TestCase):
         
         with statistics_db.get_db_connection() as conn:
             cursor = conn.cursor()
-            cursor.execute('SELECT * FROM generation_statistics WHERE session_id = ?', ('non-existent',))
+            cursor.execute('SELECT * FROM generation_statistics WHERE session_id = %s', ('non-existent',))
             result = cursor.fetchone()
             
             self.assertIsNone(result)
@@ -111,7 +142,7 @@ class TestStatisticsDB(unittest.TestCase):
         
         with statistics_db.get_db_connection() as conn:
             cursor = conn.cursor()
-            cursor.execute('SELECT generated_scene_count FROM generation_statistics WHERE session_id = ?', 
+            cursor.execute('SELECT generated_scene_count FROM generation_statistics WHERE session_id = %s', 
                          ('session-zero',))
             result = cursor.fetchone()
             
@@ -167,7 +198,7 @@ class TestStatisticsDB(unittest.TestCase):
         
         with statistics_db.get_db_connection() as conn:
             cursor = conn.cursor()
-            cursor.execute('SELECT generated_scene_count, generated_content_size FROM generation_statistics WHERE session_id = ?',
+            cursor.execute('SELECT generated_scene_count, generated_content_size FROM generation_statistics WHERE session_id = %s',
                          ('session-defaults',))
             result = cursor.fetchone()
             
@@ -197,7 +228,7 @@ class TestStatisticsDB(unittest.TestCase):
         
         with statistics_db.get_db_connection() as conn:
             cursor = conn.cursor()
-            cursor.execute('SELECT generated_scene_count FROM generation_statistics WHERE session_id = ?',
+            cursor.execute('SELECT generated_scene_count FROM generation_statistics WHERE session_id = %s',
                          ('session-multi',))
             result = cursor.fetchone()
             
