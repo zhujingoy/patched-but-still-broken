@@ -19,7 +19,7 @@ class VideoGenerator:
                       duration: int = 8,
                       aspect_ratio: str = "16:9",
                       default_keywords: str = None,
-                      max_retries: int = 3) -> Optional[str]:
+                      max_retries: int = 10) -> Optional[str]:
         if default_keywords:
             full_prompt = f"{prompt}, {default_keywords}"
         else:
