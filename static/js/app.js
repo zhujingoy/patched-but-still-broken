@@ -499,7 +499,7 @@ function handleVolumeChange(event) {
 
 function resetUploadSection() {
     document.getElementById('progress-section').classList.add('hidden');
-    document.getElementById('upload-section').classList.remove('hidden');
+    document.getElementById('upload-section').style.display = 'block';
 }
 
 function returnToHome() {
@@ -519,7 +519,7 @@ function returnToHome() {
         currentSceneIndex = 0;
         
         document.getElementById('player-section').classList.add('hidden');
-        document.getElementById('upload-section').classList.remove('hidden');
+        document.getElementById('upload-section').style.display = 'block';
     }
 }
 
@@ -533,6 +533,7 @@ async function checkAuthentication() {
         if (data.user) {
             document.getElementById('username-display').textContent = `欢迎，${data.user.username}`;
             document.getElementById('logout-btn').style.display = 'inline-block';
+            document.getElementById('upload-section').style.display = 'block';
         } else {
             window.location.href = '/login';
         }
