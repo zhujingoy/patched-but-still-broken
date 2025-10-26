@@ -648,7 +648,7 @@ async function handleDownload() {
         const downloadUrl = `/api/download/${currentTaskId}`;
         const link = document.createElement('a');
         link.href = downloadUrl;
-        link.download = `anime_${currentTaskId}.zip`;
+        link.download = `anime_${currentTaskId}.mp4`;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
